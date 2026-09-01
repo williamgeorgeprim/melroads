@@ -107,7 +107,7 @@
 
   // ---------- lobby mode: live leaderboard panel + round transitions ----------
   async function setUpLobbyPanel(lobby) {
-    $("lobby-panel").style.display = "block";
+    $("lobby-panel").style.display = "flex";
     $("lobby-round-label").textContent = `Round ${round} / ${lobbyTotalRounds}`;
     liveScores.clear();
     await refreshLeaderboard();
@@ -187,6 +187,7 @@
 
   async function showLobbyResults() {
     gameOver = true;
+    window.LOBBY.forgetLobby();
     const rows = await window.LOBBY.getLiveLeaderboard(LOBBY_ID);
     const banner = $("status-banner");
     banner.className = "win";
@@ -325,6 +326,14 @@
       else banner.textContent += " — waiting on other players to finish this round...";
     }
   }
+
+  $("leave-lobby-btn").addEventListener("click", async () => {
+    if (MODE !== "lobby" || !user) return;
+    if (!confirm("Leave this game? You'll drop out of the lobby for everyone else.")) return;
+    await window.LOBBY.leaveLobby({ lobbyId: LOBBY_ID, userId: user.id });
+    window.LOBBY.forgetLobby();
+    location.href = "index.html";
+  });
 
   $("reset-btn").addEventListener("click", () => {
     if (isOneShot) return; // daily/lobby are one-shot per round
