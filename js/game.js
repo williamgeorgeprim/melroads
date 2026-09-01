@@ -1,18 +1,21 @@
 // ============================================================
 // Game page controller. Reads ?mode=daily|endless|1v1(&match=<id>)
-// from the URL and wires the shared Engine to the UI + Supabase.
+// or ?mode=lobby&lobby=<id> from the URL and wires the shared
+// Engine to the UI + Supabase.
 // ============================================================
 (async function () {
   const CONFIG = window.GAME_CONFIG;
   const params = new URLSearchParams(location.search);
-  const MODE = params.get("mode") || "endless"; // 'daily' | 'endless' | '1v1'
+  const MODE = params.get("mode") || "endless"; // 'daily' | 'endless' | '1v1' | 'lobby'
   const MATCH_ID = params.get("match");
+  const LOBBY_ID = params.get("lobby");
 
   let ROADS = [], roadsById = new Map();
   let score = CONFIG.STARTING_POINTS;
   let target = null, refRoad = null, gameOver = false;
-  let user = null, isPlayerA = true;
+  let user = null, isPlayerA = true, isHost = false;
   let matchChannel = null, oppLiveScore = CONFIG.STARTING_POINTS;
+  let lobbyChannel = null, round = 0, lobbyTotalRounds = 1;
 
   const $ = (id) => document.getElementById(id);
   $("cost-ns").textContent = `−${CONFIG.COST_NORTH_SOUTH_QUESTION}`;
@@ -20,7 +23,7 @@
   $("cost-guess").textContent = `−${CONFIG.COST_WRONG_GUESS} if wrong`;
   $("score").textContent = score;
 
-  const modeLabels = { daily: "Daily Road", endless: "Endless", "1v1": "1v1 Match" };
+  const modeLabels = { daily: "Daily Road", endless: "Endless", "1v1": "1v1 Match", lobby: "Lobby Match" };
   $("mode-label").textContent = modeLabels[MODE] || "Guess the Road";
 
   function fmtScore() {
@@ -43,7 +46,7 @@
   // ---------- auth gate for modes that need it ----------
   async function requireAuthOrWarn() {
     user = await window.SB.getUser();
-    if (!user && (MODE === "daily" || MODE === "1v1")) {
+    if (!user && (MODE === "daily" || MODE === "1v1" || MODE === "lobby")) {
       $("loading-banner").textContent = "Sign in from the home screen to play this mode.";
       $("loading-banner").style.display = "block";
       return false;
@@ -82,6 +85,7 @@
 
   async function pickTargetForMode() {
     if (MODE === "daily") return window.Engine.pickDailyTarget(ROADS, window.Engine.todayStr());
+
     if (MODE === "1v1") {
       let match = await window.SB.getMatch(MATCH_ID);
       if (!match) throw new Error("Match not found");
@@ -115,6 +119,35 @@
       await setUpVersusStrip(match);
       return window.Engine.findById(ROADS, match.road_id);
     }
+
+    if (MODE === "lobby") {
+      let lobby = await window.LOBBY.getLobby(LOBBY_ID);
+      if (!lobby) throw new Error("Lobby not found");
+      round = lobby.current_round;
+      lobbyTotalRounds = lobby.total_rounds;
+      isHost = user && lobby.host_id === user.id;
+      const roundIndex = round - 1;
+
+      // Host assigns this round's road if nobody has yet (same pattern
+      // as the 1v1 creator assigning road_id === -1).
+      if (isHost && lobby.road_ids[roundIndex] == null) {
+        const picked = window.Engine.pickRandomTarget(ROADS);
+        await window.LOBBY.setRoundRoad({ lobbyId: LOBBY_ID, roundIndex, roadId: picked.id, roadName: picked.name });
+        await setUpLobbyPanel(lobby);
+        return picked;
+      }
+
+      // Non-host (or host on a re-entry) waits briefly for the road to appear.
+      let tries = 0;
+      while (lobby.road_ids[roundIndex] == null && tries < 20) {
+        await new Promise((r) => setTimeout(r, 500));
+        lobby = await window.LOBBY.getLobby(LOBBY_ID);
+        tries++;
+      }
+      await setUpLobbyPanel(lobby);
+      return window.Engine.findById(ROADS, lobby.road_ids[roundIndex]);
+    }
+
     return window.Engine.pickRandomTarget(ROADS); // endless
   }
 
@@ -132,7 +165,6 @@
 
     matchChannel = window.SB.openMatchChannel(MATCH_ID, {
       onScoreBroadcast: (payload) => {
-        // Only care about the opponent's own broadcasts.
         if (payload.isPlayerA !== isPlayerA) {
           oppLiveScore = payload.score;
           $("opp-score").textContent = oppLiveScore;
@@ -142,8 +174,71 @@
         if (row.status === "complete" && gameOver) revealMatchResult(row);
       },
     });
-    // Announce our starting score so the opponent's strip is accurate immediately.
     window.SB.broadcastScore(matchChannel, { isPlayerA, score });
+  }
+
+  // ---------- lobby mode: leaderboard panel + round transitions ----------
+  // NOTE: this assumes game.html has a #lobby-panel block with
+  // #lobby-round-label and #lobby-leaderboard inside it — see the
+  // markup snippet in the accompanying notes if it isn't there yet.
+  async function setUpLobbyPanel(lobby) {
+    $("lobby-panel").style.display = "block";
+    $("lobby-round-label").textContent = `Round ${round} / ${lobbyTotalRounds}`;
+    await refreshLeaderboard();
+
+    if (!lobbyChannel) {
+      lobbyChannel = window.LOBBY.openLobbyChannel(LOBBY_ID, {
+        onScoreChange: refreshLeaderboard,
+        onLobbyChange: async (row) => {
+          if (row.status === "complete") {
+            await showLobbyResults();
+          } else if (row.current_round > round) {
+            await advanceLobbyRound(row.current_round);
+          }
+        },
+      });
+    }
+  }
+
+  async function refreshLeaderboard() {
+    const rows = await window.LOBBY.getLiveLeaderboard(LOBBY_ID);
+    const list = $("lobby-leaderboard");
+    if (!list) return;
+    list.innerHTML = rows
+      .map(
+        (r) => `
+      <div class="lb-row${user && r.userId === user.id ? " me" : ""}">
+        <span class="lb-name">${r.name}${r.doneThisRound ? " ✓" : ""}</span>
+        <span class="lb-total">${r.total}</span>
+      </div>`
+      )
+      .join("");
+  }
+
+  async function advanceLobbyRound(newRound) {
+    round = newRound;
+    score = CONFIG.STARTING_POINTS;
+    gameOver = false; refRoad = null;
+    fmtScore();
+    $("log").innerHTML = "";
+    $("ref-section").style.display = "none";
+    $("status-banner").style.display = "none";
+    $("status-banner").className = "";
+    map.setFilter("roads-selected", ["==", ["get", "id"], -1]);
+    map.setPaintProperty("roads-selected", "line-color", "#4f8cff");
+
+    target = await pickTargetForMode(); // re-enters the lobby branch above
+    $("search-input").disabled = false;
+  }
+
+  async function showLobbyResults() {
+    gameOver = true;
+    const rows = await window.LOBBY.getLiveLeaderboard(LOBBY_ID);
+    const banner = $("status-banner");
+    banner.className = "win";
+    const ranked = rows.map((r, i) => `${i + 1}. ${r.name} — ${r.total}`).join(" · ");
+    banner.textContent = `🏁 Lobby complete! ${ranked}`;
+    banner.style.display = "block";
   }
 
   async function initGame() {
@@ -163,7 +258,7 @@
 
     target = await pickTargetForMode();
     console.log("DEBUG target (remove for real play):", target.name, target.id);
-    $("reset-btn").disabled = MODE !== "endless"; // daily/1v1 are one-shot
+    $("reset-btn").disabled = MODE !== "endless"; // daily/1v1/lobby are one-shot per round
     $("search-input").disabled = false;
   }
 
@@ -282,6 +377,17 @@
       } else {
         banner.textContent += " — waiting on your opponent to finish...";
       }
+    } else if (MODE === "lobby") {
+      const updated = await window.LOBBY.submitRoundScore({ lobbyId: LOBBY_ID, roundNumber: round, score });
+      if (!updated) {
+        banner.textContent += " — couldn't submit your score, try refreshing.";
+      } else if (updated.status === "complete") {
+        await showLobbyResults();
+      } else if (updated.current_round > round) {
+        await advanceLobbyRound(updated.current_round);
+      } else {
+        banner.textContent += " — waiting on other players to finish this round...";
+      }
     }
   }
 
@@ -294,7 +400,7 @@
   }
 
   $("reset-btn").addEventListener("click", async () => {
-    if (MODE !== "endless") return; // daily/1v1 are one-shot per instance
+    if (MODE !== "endless") return; // daily/1v1/lobby are one-shot per round
     score = CONFIG.STARTING_POINTS;
     gameOver = false; refRoad = null;
     fmtScore();
