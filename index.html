@@ -111,6 +111,7 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
 <button class="active" data-mode="daily" data-scope="daily">Today</button>
 <button data-mode="daily" data-scope="all-time">Daily · all-time</button>
 <button data-mode="endless" data-scope="all-time">Endless · all-time</button>
+<button data-mode="alltime" data-scope="all-time">Player totals · all-time</button>
 </div>
 <div id="leaderboard-list" class="muted">Loading…</div>
 </div>
@@ -201,6 +202,16 @@ $("leaderboard-list").textContent = user
 return;
 }
 }
+
+if (mode === "alltime") {
+const rows = await window.SB.allTimeLeaderboard();
+if (!rows.length) { $("leaderboard-list").textContent = "No scores yet."; return; }
+$("leaderboard-list").innerHTML = rows
+.map((r, i) => `<div class="lb-row"><span class="who">${i + 1}. ${r.display_name || "?"} — ${r.games_played} game${r.games_played === 1 ? "" : "s"}</span><span>${r.total}</span></div>`)
+.join("");
+return;
+}
+
 const rows = await window.SB.leaderboard({ mode, scope });
 if (!rows.length) { $("leaderboard-list").textContent = "No scores yet."; return; }
 $("leaderboard-list").innerHTML = rows

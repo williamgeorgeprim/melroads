@@ -121,6 +121,27 @@ end;
 $$ language plpgsql security definer;
 
 -- ============================================================
+-- All-time totals — every point a player has ever scored, across
+-- Daily, Endless, and every multiplayer lobby round combined.
+-- ============================================================
+
+create or replace view player_totals as
+select
+  p.id as user_id,
+  p.display_name,
+  coalesce(sum(t.score), 0) as total,
+  count(t.score) as games_played
+from profiles p
+left join (
+  select user_id, score from scores
+  union all
+  select user_id, score from lobby_round_scores
+) t on t.user_id = p.id
+group by p.id, p.display_name;
+
+grant select on player_totals to anon, authenticated;
+
+-- ============================================================
 -- Row Level Security
 -- ============================================================
 
