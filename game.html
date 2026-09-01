@@ -37,6 +37,12 @@ h1, h2, h3, .display, button, .mode-label, .q-cost, .top-link, .ref-name { font-
 h1 { font-size: 20px; font-weight:600; margin: 6px 0 2px 0; letter-spacing:0.3px; text-transform: uppercase; }
 .subtitle, .mode-label { color: var(--teal-deep); font-size: 12px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
 
+.lb-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 4px; border-bottom:1px solid var(--paper-line, #ccc); font-size:13px; }
+.lb-row.me { font-weight:700; }
+.lb-live { font-family:'JetBrains Mono', monospace; }
+.lb-live.negative { color: var(--brick, #a23b3b); }
+.lb-kick { border:none; background:none; cursor:pointer; color: var(--brick, #a23b3b); font-size:12px; padding:0 2px; }
+
 /* --- score readout: the signature element --- */
 #score-block { background: var(--ink); border-radius: 6px; padding: 14px 16px; margin-top:4px; display:flex; align-items:flex-end; justify-content:space-between; gap:10px; }
 #score { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 700; line-height:1; color: var(--amber); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
@@ -92,6 +98,10 @@ input[type=text]:focus { outline: 2px solid var(--teal); outline-offset: -1px; }
 <body>
 <div id="app">
   <div id="map"></div>
+  <div id="lobby-panel" style="display:none; position:fixed; left:16px; top:80px; width:220px;">
+    <div id="lobby-round-label" style="font-weight:600; margin-bottom:8px;"></div>
+    <div id="lobby-leaderboard"></div>
+  </div>
   <div id="panel">
     <div id="status-banner"></div>
     <div id="loading-banner">Loading road data…</div>
