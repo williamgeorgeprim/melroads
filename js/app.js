@@ -103,6 +103,20 @@
     return data || [];
   }
 
+  // Every point a player has ever scored, across Daily, Endless, and
+  // every multiplayer lobby round combined — see the player_totals
+  // view in supabase-schema.sql.
+  async function allTimeLeaderboard(limit = 20) {
+    const { data, error } = await client
+      .from("player_totals")
+      .select("user_id, display_name, total, games_played")
+      .gt("games_played", 0)
+      .order("total", { ascending: false })
+      .limit(limit);
+    if (error) console.error("allTimeLeaderboard error", error);
+    return data || [];
+  }
+
   // ---------- lobbies (multiplayer, 2-10 players — replaces the old 1v1 mode) ----------
 
   const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
@@ -260,7 +274,7 @@
   window.SB = {
     client,
     getUser, getProfile, signUpWithUsername, signInWithUsername, signOut, ensureProfile, onAuthChange,
-    submitScore, hasPlayedDailyToday, endlessAverageForRoad, leaderboard,
+    submitScore, hasPlayedDailyToday, endlessAverageForRoad, leaderboard, allTimeLeaderboard,
   };
 
   window.LOBBY = {
