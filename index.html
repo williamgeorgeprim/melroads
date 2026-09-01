@@ -102,8 +102,7 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
     <div class="section-title">1v1 Match</div>
     <div class="row" style="margin-bottom:8px;">
       <button id="create-match-btn">Create new match</button>
-      <input type="text" id="join-code-input" placeholder="paste match link/id to join" />
-      <button class="secondary" id="join-match-btn">Join</button>
+      <button class="secondary" id="join-match-btn">Join with a code</button>
     </div>
     <div class="muted" id="match-status"></div>
   </div>
@@ -183,24 +182,15 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
 
   $("create-match-btn").addEventListener("click", async () => {
     if (!user) return;
-    // pick a target road id up front so both players get the same one;
-    // engine isn't loaded on this page, so game.html resolves it via road_id on load.
-    // We store a placeholder road_id of -1 meaning "pick on first load" is avoided by
-    // pre-selecting via a lightweight random id range is not possible without the dataset,
-    // so instead we let the creator's game.html assign the road on first open.
+    // Road gets assigned once the creator's game.html loads the road
+    // dataset (this page doesn't have it) — road_id -1 means "not yet set".
     const match = await window.SB.createMatch({ playerId: user.id, roadId: -1, roadName: "" });
     if (!match) { $("match-status").textContent = "Couldn't create match."; return; }
-    const link = `${location.origin}${location.pathname.replace("index.html", "")}game.html?mode=1v1&match=${match.id}`;
-    $("match-status").innerHTML = `Share this link with your opponent: <br><code>${link}</code>`;
+    location.href = `lobby.html?match=${match.id}&as=host`;
   });
 
   $("join-match-btn").addEventListener("click", () => {
-    const raw = $("join-code-input").value.trim();
-    if (!raw) return;
-    // accept either a full link or a bare match id
-    const idMatch = raw.match(/match=([0-9a-fA-F-]+)/);
-    const id = idMatch ? idMatch[1] : raw;
-    location.href = `game.html?mode=1v1&match=${id}`;
+    location.href = "lobby.html";
   });
 
   // ---------- leaderboard ----------

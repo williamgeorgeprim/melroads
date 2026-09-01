@@ -37,10 +37,11 @@ create index if not exists scores_endless_by_road
 -- it on first load of the game page so both players see the same road).
 create table if not exists matches (
   id uuid primary key default gen_random_uuid(),
+  code text not null unique,
   road_id integer not null default -1,
   road_name text not null default '',
-  player_a uuid references auth.users(id) not null,
-  player_b uuid references auth.users(id),
+  player_a uuid references profiles(id) not null,
+  player_b uuid references profiles(id),
   score_a integer,
   score_b integer,
   status text not null default 'waiting' check (status in ('waiting', 'active', 'complete')),
