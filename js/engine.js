@@ -54,8 +54,22 @@ window.Engine = (function () {
       byName.get(name).push(f);
     }
 
+    // Roughly converts a lon/lat bounding-box gap into metres, using the
+    // midpoint latitude for the lon->metres scale factor.
+    function bboxGapMeters(b1, b2) {
+      const dLon = Math.max(0, Math.max(b1[0] - b2[2], b2[0] - b1[2]));
+      const dLat = Math.max(0, Math.max(b1[1] - b2[3], b2[1] - b1[3]));
+      const midLat = (b1[1] + b1[3] + b2[1] + b2[3]) / 4;
+      const mPerDegLat = 111320;
+      const mPerDegLon = 111320 * Math.cos((midLat * Math.PI) / 180);
+      const dx = dLon * mPerDegLon, dy = dLat * mPerDegLat;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
     const roads = [];
     let nextId = 0;
+    const MERGE_DIST_M = (window.GAME_CONFIG && window.GAME_CONFIG.DIVIDED_ROAD_MERGE_DISTANCE_M) || 80;
+
     for (const [name, segs] of byName) {
       const n = segs.length;
       const parent = Array.from({ length: n }, (_, i) => i);
@@ -77,14 +91,18 @@ window.Engine = (function () {
       }
       for (const idxs of endpointMap.values()) for (let j = 1; j < idxs.length; j++) union(idxs[0], idxs[j]);
 
-      const clusters = new Map();
+      const clusterIdxs = new Map();
       for (let i = 0; i < n; i++) {
         const r = find(i);
-        if (!clusters.has(r)) clusters.set(r, []);
-        clusters.get(r).push(i);
+        if (!clusterIdxs.has(r)) clusterIdxs.set(r, []);
+        clusterIdxs.get(r).push(i);
       }
 
-      for (const idxs of clusters.values()) {
+      // Build one component per connected cluster (this is where divided
+      // carriageways still show up as separate components, since they
+      // don't share endpoints with their opposite side).
+      const components = [];
+      for (const idxs of clusterIdxs.values()) {
         const paths = [];
         let totalLen = 0, sumLon = 0, sumLat = 0, count = 0;
         let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
@@ -99,6 +117,40 @@ window.Engine = (function () {
             if (lat < minLat) minLat = lat;
             if (lat > maxLat) maxLat = lat;
           }
+        }
+        components.push({ paths, len: totalLen, sumLon, sumLat, count, b: [minLon, minLat, maxLon, maxLat] });
+      }
+
+      // Second pass: merge same-named components that sit close together
+      // (median-divided roads) without touching same-named components
+      // far apart (genuinely different streets, e.g. in another suburb).
+      const cn = components.length;
+      const cparent = Array.from({ length: cn }, (_, i) => i);
+      function cfind(x) { while (cparent[x] !== x) { cparent[x] = cparent[cparent[x]]; x = cparent[x]; } return x; }
+      function cunion(a, b) { const ra = cfind(a), rb = cfind(b); if (ra !== rb) cparent[ra] = rb; }
+      for (let i = 0; i < cn; i++) {
+        for (let j = i + 1; j < cn; j++) {
+          if (bboxGapMeters(components[i].b, components[j].b) <= MERGE_DIST_M) cunion(i, j);
+        }
+      }
+      const merged = new Map();
+      for (let i = 0; i < cn; i++) {
+        const r = cfind(i);
+        if (!merged.has(r)) merged.set(r, []);
+        merged.get(r).push(components[i]);
+      }
+
+      for (const group of merged.values()) {
+        let paths = [], totalLen = 0, sumLon = 0, sumLat = 0, count = 0;
+        let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+        for (const c of group) {
+          paths = paths.concat(c.paths);
+          totalLen += c.len;
+          sumLon += c.sumLon; sumLat += c.sumLat; count += c.count;
+          if (c.b[0] < minLon) minLon = c.b[0];
+          if (c.b[1] < minLat) minLat = c.b[1];
+          if (c.b[2] > maxLon) maxLon = c.b[2];
+          if (c.b[3] > maxLat) maxLat = c.b[3];
         }
         roads.push({
           id: nextId++, name, paths,
