@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>1v1 Lobby — Guess the Road</title>
+<title>Lobby — MelRoads</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,141 +18,367 @@
   --brick: #A23B3B;
 }
 * { box-sizing: border-box; }
-html, body { margin:0; padding:0; height:100%; font-family: 'Source Serif 4', Georgia, serif; background:var(--paper); color:var(--ink); }
-h1, .title, button { font-family: 'Oswald', 'Arial Narrow', sans-serif; }
-.wrap { max-width: 460px; margin: 0 auto; padding: 60px 24px; text-align:center; }
-.top-link { display:inline-block; color: var(--ink-soft); font-size:11px; text-decoration:none; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 24px; }
+html, body { margin:0; padding:0; min-height:100%; font-family: 'Source Serif 4', Georgia, serif; background:var(--paper); color:var(--ink); }
+h1, h2, .title, button, .eyebrow { font-family: 'Oswald', 'Arial Narrow', sans-serif; }
+.wrap { max-width: 560px; margin: 0 auto; padding: 48px 24px 90px; }
+.top-link { display:inline-block; color: var(--ink-soft); font-size:11px; text-decoration:none; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 20px; }
 .top-link:hover { color: var(--ink); }
-h1 { font-size: 22px; font-weight:700; text-transform:uppercase; margin: 0 0 30px; }
-.card { background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 8px; padding: 30px 24px; margin-bottom: 18px; }
-.eyebrow { font-size: 11px; text-transform:uppercase; letter-spacing:0.1em; color: var(--ink-soft); margin-bottom: 10px; font-family:'Oswald',sans-serif; }
-#code-display { font-family:'JetBrains Mono', monospace; font-size: 48px; font-weight:700; letter-spacing: 0.12em; color: var(--amber); margin-bottom: 6px; }
-.hint { color: var(--ink-soft); font-size: 13px; }
-.players { display:flex; align-items:center; justify-content:center; gap: 18px; margin: 20px 0; }
-.player-slot { flex:1; background: var(--paper); border: 1.5px dashed var(--paper-line); border-radius: 6px; padding: 16px 10px; font-size: 14px; }
-.player-slot.filled { border-style: solid; border-color: var(--teal); background: #E4EFE9; }
-.player-slot .name { font-weight:700; text-transform:uppercase; font-family:'Oswald',sans-serif; font-size:13px; color: var(--teal-deep); }
-.vs { font-family:'Oswald',sans-serif; font-weight:700; color: var(--ink-soft); font-size: 13px; }
-.status-line { font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.05em; font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+h1 { font-size: 22px; font-weight:700; text-transform:uppercase; margin: 0 0 22px; }
+.card { background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 8px; padding: 22px 22px; margin-bottom: 18px; }
+.eyebrow { font-size: 11px; text-transform:uppercase; letter-spacing:0.1em; color: var(--ink-soft); margin-bottom: 12px; }
+.muted { color: var(--ink-soft); font-size: 12.5px; }
+.row { display:flex; gap:10px; }
+.row > * { flex:1; }
+input[type=text] { width:100%; padding: 12px 14px; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink); font-family:'JetBrains Mono',monospace; font-size: 18px; text-align:center; text-transform:uppercase; letter-spacing:0.1em; }
+button { cursor: pointer; border: 1.5px solid var(--ink); background: var(--teal); color: #F5F1E6; font-weight:600; border-radius: 6px; padding: 11px 16px; font-size: 12.5px; text-transform:uppercase; letter-spacing:0.03em; }
+button:hover { background: var(--teal-deep); }
+button.secondary { background: var(--paper); color: var(--ink); font-weight:500; }
+button.secondary:hover { background: #E7E0CC; }
+button.danger { background: var(--paper); color: var(--brick); border-color: var(--brick); font-weight:500; padding: 6px 10px; font-size: 11px; }
+button.danger:hover { background: var(--brick); color: #fff; }
+button:disabled { opacity:.4; cursor:default; }
+button.full { width:100%; margin-top: 4px; }
+
+/* code + link */
+#code-display { font-family:'JetBrains Mono', monospace; font-size: 40px; font-weight:700; letter-spacing: 0.12em; color: var(--amber); margin: 4px 0 4px; }
+.share-row { display:flex; gap:8px; align-items:center; background: var(--paper); border: 1.5px solid var(--paper-line); border-radius: 6px; padding: 8px 10px; }
+.share-row code { flex:1; font-family:'JetBrains Mono', monospace; font-size:12px; word-break: break-all; background:none; border:none; padding:0; }
+.share-row button { flex: 0 0 auto; padding: 8px 12px; font-size: 11px; }
+.copied-tag { font-size: 11px; color: var(--teal-deep); font-weight:600; margin-left: 6px; display:none; }
+
+/* settings */
+.setting { margin-bottom: 18px; }
+.setting:last-child { margin-bottom: 0; }
+.setting label { display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.03em; color: var(--ink); }
+.setting label span.val { font-family:'JetBrains Mono',monospace; color: var(--amber-deep); font-weight:700; }
+input[type=range] { width:100%; accent-color: var(--teal); }
+.toggle-row { display:flex; align-items:center; justify-content:space-between; }
+.toggle-row .desc { font-size:12px; color:var(--ink-soft); max-width: 320px; }
+.switch { position:relative; width:46px; height:26px; flex:0 0 auto; }
+.switch input { opacity:0; width:0; height:0; }
+.slider-toggle { position:absolute; cursor:pointer; inset:0; background: var(--paper-line); border-radius: 26px; transition:.15s; border:1.5px solid var(--ink); }
+.slider-toggle::before { content:""; position:absolute; height:18px; width:18px; left:3px; top:2.5px; background:#fff; border-radius:50%; transition:.15s; }
+.switch input:checked + .slider-toggle { background: var(--teal); }
+.switch input:checked + .slider-toggle::before { transform: translateX(20px); }
+.settings-readonly .setting label span.val { color: var(--ink-soft); }
+.settings-readonly input[type=range] { pointer-events:none; opacity:.6; }
+.settings-readonly .switch { pointer-events:none; opacity:.6; }
+
+/* players */
+.player-row { display:flex; align-items:center; justify-content:space-between; padding: 10px 4px; border-bottom: 1px solid var(--paper-line); font-size: 14px; }
+.player-row:last-child { border-bottom:none; }
+.player-row .name { font-weight:600; font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:13px; }
+.tag { font-family:'JetBrains Mono', monospace; font-size:10px; color: var(--ink-soft); border:1px solid var(--paper-line); border-radius:4px; padding:2px 6px; margin-left:8px; }
+.tag.host { color: var(--teal-deep); border-color: var(--teal); }
+.tag.you { color: var(--amber-deep); border-color: var(--amber); }
+.player-count { font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+
+.status-line { font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.05em; font-size: 13px; color: var(--ink-soft); margin-top: 10px; text-align:center; }
 .dots::after { content: ''; animation: dots 1.4s steps(4,end) infinite; }
 @keyframes dots { 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} 100%{content:'';} }
-input[type=text] { width:100%; padding: 12px 14px; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink); font-family:'JetBrains Mono',monospace; font-size: 20px; text-align:center; text-transform:uppercase; letter-spacing:0.1em; }
-button { cursor: pointer; border: 1.5px solid var(--ink); background: var(--teal); color: #F5F1E6; font-weight:600; border-radius: 6px; padding: 12px 16px; font-size: 13px; text-transform:uppercase; letter-spacing:0.03em; width:100%; margin-top:12px; }
-button:hover { background: var(--teal-deep); }
-button:disabled { opacity:.4; cursor:default; }
-.error { color: var(--brick); font-size: 13px; margin-top: 10px; }
+.error { color: var(--brick); font-size: 13px; margin-top: 10px; text-align:center; }
+.tabs { display:flex; gap:6px; margin-bottom:16px; }
+.tabs button { flex:1; background: var(--paper); color: var(--ink-soft); font-size:11px; padding:9px 12px; border-color: var(--paper-line); }
+.tabs button.active { background: var(--ink); color: var(--paper-2); border-color: var(--ink); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <a class="top-link" href="index.html">&larr; Home</a>
-  <h1>1v1 Match</h1>
+  <h1>Multiplayer Lobby</h1>
 
-  <div id="create-view" style="display:none;">
-    <div class="card">
-      <div class="eyebrow">Your match code</div>
-      <div id="code-display">------</div>
-      <div class="hint">Give this to your opponent — they enter it on the home screen to join.</div>
-      <div class="players">
-        <div class="player-slot filled"><div class="name" id="host-name">You</div></div>
-        <div class="vs">VS</div>
-        <div class="player-slot" id="opponent-slot">Waiting…</div>
-      </div>
-      <div class="status-line" id="create-status">Waiting for opponent<span class="dots"></span></div>
+  <!-- ============ entry screen: create or join ============ -->
+  <div id="entry-view" style="display:none;">
+    <div class="tabs">
+      <button class="active" id="tab-join">Join with a code</button>
+      <button id="tab-create">Create a lobby</button>
     </div>
-  </div>
-
-  <div id="join-view" style="display:none;">
-    <div class="card">
-      <div class="eyebrow">Enter match code</div>
+    <div class="card" id="join-card">
+      <div class="eyebrow">Enter lobby code</div>
       <input type="text" id="join-code-input" maxlength="6" placeholder="ABCXYZ" />
-      <button id="join-btn">Join match</button>
+      <button class="full" id="join-btn">Join lobby</button>
       <div class="error" id="join-error"></div>
     </div>
-  </div>
-
-  <div id="joined-view" style="display:none;">
-    <div class="card">
-      <div class="players">
-        <div class="player-slot filled"><div class="name" id="host-name-2">Opponent</div></div>
-        <div class="vs">VS</div>
-        <div class="player-slot filled"><div class="name" id="self-name">You</div></div>
-      </div>
-      <div class="status-line" id="joined-status">Starting match<span class="dots"></span></div>
+    <div class="card" id="create-card" style="display:none;">
+      <div class="eyebrow">New lobby settings</div>
+      <div id="create-settings"></div>
+      <button class="full" id="create-btn">Create lobby</button>
     </div>
   </div>
+
+  <!-- ============ waiting room (host or guest) ============ -->
+  <div id="room-view" style="display:none;">
+
+    <div class="card">
+      <div class="eyebrow">Lobby code</div>
+      <div id="code-display">------</div>
+      <div class="share-row">
+        <code id="share-link">—</code>
+        <button class="secondary" id="copy-link-btn">Copy link</button>
+      </div>
+      <span class="copied-tag" id="copied-tag">Copied!</span>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Settings <span id="host-only-note" class="muted" style="text-transform:none; letter-spacing:0;"></span></div>
+      <div id="room-settings"></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Players</div>
+      <div class="player-count" id="player-count">0 / 0</div>
+      <div id="player-list"></div>
+    </div>
+
+    <button class="full" id="start-btn" style="display:none;">Start game</button>
+    <button class="full secondary" id="leave-btn">Leave lobby</button>
+    <div class="status-line" id="room-status"></div>
+  </div>
+
 </div>
 
 <script src="js/supabase-client.js"></script>
+<script src="js/lobby-client.js"></script>
 <script>
 (async function () {
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
-  const matchId = params.get("match");
-  const mode = params.get("as"); // 'host' or absent (join flow)
+  let lobbyId = params.get("lobby");
+  const shareToken = params.get("share");
+  let channel = null;
+  let isHost = false;
+  let userId = null;
 
   const user = await window.SB.getUser();
   if (!user) { location.href = "index.html"; return; }
+  userId = user.id;
+  await window.SB.ensureProfile(user);
 
-  function goToGame(id) {
-    location.href = `game.html?mode=1v1&match=${id}`;
+  function shareUrl(token) {
+    return `${location.origin}${location.pathname.replace(/lobby\.html$/, "")}lobby.html?share=${token}`;
   }
 
-  if (mode === "host" && matchId) {
-    // ---------- host: show code, wait for opponent ----------
-    $("create-view").style.display = "block";
-    const match = await window.SB.getMatch(matchId);
-    if (!match) { $("create-status").textContent = "Match not found."; return; }
-    $("code-display").textContent = match.code;
+  function copyToClipboard(text) {
+    navigator.clipboard && navigator.clipboard.writeText(text);
+    $("copied-tag").style.display = "inline";
+    setTimeout(() => ($("copied-tag").style.display = "none"), 1400);
+  }
 
-    const profile = await window.SB.getProfile(user.id);
-    $("host-name").textContent = profile ? profile.display_name : "You";
+  // ---------- settings widget (shared between create + room views) ----------
+  function renderSettings(container, { maxPlayers, totalRounds, isPublic }, editable, onChange) {
+    container.classList.toggle("settings-readonly", !editable);
+    container.innerHTML = `
+      <div class="setting">
+        <label>Players <span class="val" id="s-players-val">${maxPlayers}</span></label>
+        <input type="range" id="s-players" min="2" max="10" step="1" value="${maxPlayers}" ${editable ? "" : "disabled"} />
+      </div>
+      <div class="setting">
+        <label>Rounds <span class="val" id="s-rounds-val">${totalRounds}</span></label>
+        <input type="range" id="s-rounds" min="1" max="100" step="1" value="${totalRounds}" ${editable ? "" : "disabled"} />
+      </div>
+      <div class="setting toggle-row">
+        <div>
+          <label style="margin-bottom:2px;">${isPublic ? "Public" : "Private"} lobby</label>
+          <div class="desc">${isPublic ? "Anyone with the code can join." : "Only people with the share link (or the code, from you directly) can join."}</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="s-public" ${isPublic ? "checked" : ""} ${editable ? "" : "disabled"} />
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+    `;
+    if (!editable) return;
+    const playersEl = container.querySelector("#s-players");
+    const roundsEl = container.querySelector("#s-rounds");
+    const publicEl = container.querySelector("#s-public");
+    const fire = () => onChange({
+      maxPlayers: parseInt(playersEl.value, 10),
+      totalRounds: parseInt(roundsEl.value, 10),
+      isPublic: publicEl.checked,
+    });
+    playersEl.addEventListener("input", () => { container.querySelector("#s-players-val").textContent = playersEl.value; });
+    roundsEl.addEventListener("input", () => { container.querySelector("#s-rounds-val").textContent = roundsEl.value; });
+    playersEl.addEventListener("change", fire);
+    roundsEl.addEventListener("change", fire);
+    publicEl.addEventListener("change", () => {
+      container.querySelector(".desc").textContent = publicEl.checked
+        ? "Anyone with the code can join."
+        : "Only people with the share link (or the code, from you directly) can join.";
+      container.querySelector(".toggle-row label").textContent = (publicEl.checked ? "Public" : "Private") + " lobby";
+      fire();
+    });
+  }
 
-    if (match.player_b) {
-      const opp = await window.SB.getProfile(match.player_b);
-      $("opponent-slot").textContent = opp ? opp.display_name : "Opponent";
-      $("opponent-slot").classList.add("filled");
-      $("create-status").textContent = "Starting match…";
-      setTimeout(() => goToGame(matchId), 1200);
-      return;
-    }
+  // ---------- room view ----------
+  async function enterRoom(lobby) {
+    lobbyId = lobby.id;
+    window.LOBBY.rememberLobby(lobbyId);
+    $("entry-view").style.display = "none";
+    $("room-view").style.display = "block";
+    isHost = lobby.host_id === userId;
 
-    window.SB.openMatchChannel(matchId, {
-      onRowChange: async (row) => {
-        if (row.player_b) {
-          const opp = await window.SB.getProfile(row.player_b);
-          $("opponent-slot").textContent = opp ? opp.display_name : "Opponent";
-          $("opponent-slot").classList.add("filled");
-          $("create-status").textContent = "Starting match…";
-          setTimeout(() => goToGame(matchId), 1200);
+    $("code-display").textContent = lobby.code;
+    $("share-link").textContent = shareUrl(lobby.share_token);
+    $("copy-link-btn").onclick = () => copyToClipboard(shareUrl(lobby.share_token));
+
+    $("host-only-note").textContent = isHost ? "" : "(host only — you can watch, host can still edit before start)";
+
+    renderSettings($("room-settings"), {
+      maxPlayers: lobby.max_players, totalRounds: lobby.total_rounds, isPublic: lobby.is_public,
+    }, isHost, async (vals) => {
+      await window.LOBBY.updateSettings({ lobbyId, ...vals });
+    });
+
+    $("start-btn").style.display = isHost ? "block" : "none";
+    $("start-btn").onclick = async () => {
+      $("start-btn").disabled = true;
+      $("start-btn").textContent = "Starting…";
+      const ok = await window.LOBBY.startLobby(lobbyId);
+      if (!ok) { $("start-btn").disabled = false; $("start-btn").textContent = "Start game"; }
+      // realtime onLobbyChange (below) sends everyone to game.html once status flips to 'active'
+    };
+
+    $("leave-btn").onclick = async () => {
+      await window.LOBBY.leaveLobby({ lobbyId, userId });
+      window.LOBBY.forgetLobby();
+      location.href = "index.html";
+    };
+
+    await refreshPlayers();
+    updateStartButton(lobby);
+
+    if (channel) client_removeChannelSafe();
+    channel = window.LOBBY.openLobbyChannel(lobbyId, {
+      onLobbyChange: async (row) => {
+        if (row.status === "active") {
+          location.href = `game.html?mode=lobby&lobby=${lobbyId}`;
+          return;
+        }
+        renderSettings($("room-settings"), {
+          maxPlayers: row.max_players, totalRounds: row.total_rounds, isPublic: row.is_public,
+        }, isHost, async (vals) => { await window.LOBBY.updateSettings({ lobbyId, ...vals }); });
+        updateStartButton(row);
+      },
+      onPlayersChange: async () => {
+        const players = await refreshPlayers();
+        const me = players.find((p) => p.user_id === userId);
+        if (me && me.status === "kicked") {
+          window.LOBBY.forgetLobby();
+          alert("You were removed from this lobby by the host.");
+          location.href = "index.html";
         }
       },
     });
-  } else if (matchId) {
-    // ---------- already joined via code, just entered ----------
-    $("joined-view").style.display = "block";
-    const match = await window.SB.getMatch(matchId);
-    if (!match) { $("joined-status").textContent = "Match not found."; return; }
-    const host = await window.SB.getProfile(match.player_a);
-    const self = await window.SB.getProfile(user.id);
-    $("host-name-2").textContent = host ? host.display_name : "Opponent";
-    $("self-name").textContent = self ? self.display_name : "You";
-    setTimeout(() => goToGame(matchId), 1200);
-  } else {
-    // ---------- no match param: show the "enter code" form ----------
-    $("join-view").style.display = "block";
-    $("join-btn").addEventListener("click", async () => {
+  }
+
+  function client_removeChannelSafe() { /* no-op placeholder if you want to unsubscribe on unload */ }
+
+  let lastLobbySnapshot = null;
+  function updateStartButton(lobby) {
+    lastLobbySnapshot = lobby;
+    const joinedCount = document.querySelectorAll("#player-list .player-row").length;
+    if (isHost) {
+      $("start-btn").disabled = joinedCount < 2;
+      $("room-status").textContent = joinedCount < 2 ? "Need at least 2 players to start" : "Ready when you are";
+    } else {
+      $("room-status").innerHTML = 'Waiting for host to start<span class="dots"></span>';
+    }
+  }
+
+  async function refreshPlayers() {
+    const players = await window.LOBBY.getPlayers(lobbyId);
+    const joined = players.filter((p) => p.status === "joined");
+    const lobby = lastLobbySnapshot || (await window.LOBBY.getLobby(lobbyId));
+    $("player-count").textContent = `${joined.length} / ${lobby.max_players}`;
+    $("player-list").innerHTML = joined
+      .map((p) => {
+        const name = p.profiles ? p.profiles.display_name : "?";
+        const tags = [
+          p.is_host ? '<span class="tag host">HOST</span>' : "",
+          p.user_id === userId ? '<span class="tag you">YOU</span>' : "",
+        ].join("");
+        const kick = isHost && p.user_id !== userId
+          ? `<button class="danger" data-kick="${p.user_id}">Kick</button>` : "";
+        return `<div class="player-row"><span class="name">${name}${tags}</span>${kick}</div>`;
+      })
+      .join("") || '<div class="muted">Nobody here yet.</div>';
+
+    $("player-list").querySelectorAll("[data-kick]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await window.LOBBY.kickPlayer({ lobbyId, userId: btn.dataset.kick });
+        await refreshPlayers();
+      });
+    });
+    if (lastLobbySnapshot) updateStartButton(lastLobbySnapshot);
+    return joined;
+  }
+
+  // ---------- entry: create / join tabs ----------
+  function showEntry() {
+    $("entry-view").style.display = "block";
+    let defaults = { maxPlayers: 4, totalRounds: 5, isPublic: false };
+    renderSettings($("create-settings"), defaults, true, (vals) => { defaults = { ...defaults, ...vals }; });
+
+    $("tab-join").onclick = () => { $("tab-join").classList.add("active"); $("tab-create").classList.remove("active"); $("join-card").style.display = "block"; $("create-card").style.display = "none"; };
+    $("tab-create").onclick = () => { $("tab-create").classList.add("active"); $("tab-join").classList.remove("active"); $("create-card").style.display = "block"; $("join-card").style.display = "none"; };
+
+    $("join-btn").onclick = async () => {
       const code = $("join-code-input").value.trim().toUpperCase();
       $("join-error").textContent = "";
       if (code.length !== 6) { $("join-error").textContent = "Codes are 6 characters."; return; }
-      const match = await window.SB.getMatchByCode(code);
-      if (!match) { $("join-error").textContent = "No match found with that code."; return; }
-      if (match.player_a === user.id) { $("join-error").textContent = "That's your own match — share the code with a friend instead."; return; }
-      if (match.player_b && match.player_b !== user.id) { $("join-error").textContent = "That match is already full."; return; }
-      const joined = match.player_b === user.id ? match : await window.SB.joinMatch({ matchId: match.id, playerId: user.id });
-      if (!joined) { $("join-error").textContent = "Couldn't join — try again."; return; }
-      location.href = `lobby.html?match=${joined.id}`;
-    });
+      const lobby = await window.LOBBY.getLobbyByCode(code);
+      if (!lobby) { $("join-error").textContent = "No lobby found with that code."; return; }
+      if (lobby.status !== "waiting") { $("join-error").textContent = "That lobby has already started."; return; }
+      const result = await window.LOBBY.joinLobby({ lobbyId: lobby.id, userId });
+      if (result.error === "kicked") { $("join-error").textContent = "You were removed from this lobby earlier."; return; }
+      if (result.error === "full") { $("join-error").textContent = "That lobby is full."; return; }
+      if (result.error) { $("join-error").textContent = "Couldn't join — try again."; return; }
+      history.replaceState(null, "", `lobby.html?lobby=${lobby.id}`);
+      await enterRoom(await window.LOBBY.getLobby(lobby.id));
+    };
+
+    $("create-btn").onclick = async () => {
+      $("create-btn").disabled = true;
+      const lobby = await window.LOBBY.createLobby({ hostId: userId, ...defaults });
+      if (!lobby) { $("create-btn").disabled = false; alert("Couldn't create the lobby — try again."); return; }
+      history.replaceState(null, "", `lobby.html?lobby=${lobby.id}`);
+      await enterRoom(lobby);
+    };
+  }
+
+  // ---------- boot ----------
+  if (lobbyId) {
+    const lobby = await window.LOBBY.getLobby(lobbyId);
+    if (!lobby) { showEntry(); return; }
+    if (lobby.status === "active" || lobby.status === "complete") {
+      location.href = `game.html?mode=lobby&lobby=${lobbyId}`;
+      return;
+    }
+    await window.LOBBY.joinLobby({ lobbyId, userId }); // no-op if already joined; rejoins if you'd left
+    await enterRoom(lobby);
+  } else if (shareToken) {
+    const lobby = await window.LOBBY.getLobbyByShareToken(shareToken);
+    if (!lobby) { showEntry(); return; }
+    if (lobby.status !== "waiting") { location.href = `game.html?mode=lobby&lobby=${lobby.id}`; return; }
+    const result = await window.LOBBY.joinLobby({ lobbyId: lobby.id, userId });
+    if (result.error === "full" || result.error === "kicked") { showEntry(); return; }
+    history.replaceState(null, "", `lobby.html?lobby=${lobby.id}`);
+    await enterRoom(lobby);
+  } else {
+    const remembered = window.LOBBY.getRememberedLobbyId();
+    if (remembered) {
+      const lobby = await window.LOBBY.getLobby(remembered);
+      const players = lobby ? await window.LOBBY.getPlayers(remembered) : [];
+      const mine = players.find((p) => p.user_id === userId);
+      if (lobby && mine && mine.status !== "kicked" && lobby.status !== "complete") {
+        history.replaceState(null, "", `lobby.html?lobby=${lobby.id}`);
+        if (lobby.status === "active") { location.href = `game.html?mode=lobby&lobby=${lobby.id}`; return; }
+        await enterRoom(lobby);
+        return;
+      }
+      window.LOBBY.forgetLobby();
+    }
+    showEntry();
   }
 })();
 </script>

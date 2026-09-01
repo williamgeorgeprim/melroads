@@ -27,7 +27,6 @@ h1 { font-size: 30px; font-weight:700; margin: 0; letter-spacing: 0.01em; text-t
 .subtitle { color: var(--teal-deep); margin: 14px 0 30px; font-size: 15px; font-style: italic; }
 .card { background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 8px; padding: 20px; margin-bottom: 18px; }
 .section-title { font-weight:700; margin-bottom:12px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color: var(--ink); }
-
 .modes { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 26px; }
 .mode-btn { position:relative; display:block; text-decoration:none; color: var(--ink); background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 8px; padding: 20px 18px 18px; transition: transform .1s, box-shadow .15s; }
 .mode-btn:hover { transform: translateY(-2px); box-shadow: 3px 4px 0 var(--ink); }
@@ -36,7 +35,6 @@ h1 { font-size: 30px; font-weight:700; margin: 0; letter-spacing: 0.01em; text-t
 .mode-btn .desc { color: var(--ink-soft); font-size:13px; line-height:1.5; font-family:'Source Serif 4',serif; }
 .mode-btn.locked { opacity:.55; cursor:not-allowed; }
 .mode-btn.locked:hover { transform:none; box-shadow:none; }
-
 input[type=email], input[type=text], input[type=password] { width:100%; padding: 10px 12px; border-radius: 5px; border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink); font-family:'Source Serif 4',serif; font-size: 14px; }
 input:focus { outline: 2px solid var(--teal); outline-offset:-1px; }
 button { cursor: pointer; border: 1.5px solid var(--ink); background: var(--teal); color: #F5F1E6; font-weight:600; border-radius: 5px; padding: 10px 16px; font-size: 13px; text-transform:uppercase; letter-spacing:0.03em; }
@@ -58,174 +56,169 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
 </head>
 <body>
 <div class="wrap">
-  <div class="masthead">
-    <h1>MelRoads</h1>
-    <div class="grid-tag">MELB · VIC</div>
-  </div>
-  <div class="subtitle">A secret road is hiding somewhere on the map. Ask, narrow it down, guess.</div>
+<div class="masthead">
+<h1>MelRoads</h1>
+<div class="grid-tag">MELB · VIC</div>
+</div>
+<div class="subtitle">A secret road is hiding somewhere on the map. Ask, narrow it down, guess.</div>
 
-  <div class="card" id="auth-card">
-    <div id="auth-status" class="muted">Checking sign-in status…</div>
-    <div id="auth-form" style="display:none;">
-      <div class="row" style="margin-bottom:8px;">
-        <input type="text" id="username-input" placeholder="username" autocomplete="username" />
-        <input type="password" id="password-input" placeholder="password" autocomplete="current-password" />
-      </div>
-      <div class="row" style="margin-bottom:8px;">
-        <button id="signin-btn">Sign in</button>
-        <button class="secondary" id="signup-btn">Create account</button>
-      </div>
-      <div class="muted">Sign in to save scores, appear on the leaderboard, or play 1v1. Endless play works fine without an account.</div>
-    </div>
-    <button class="secondary" id="signout-btn" style="display:none;">Sign out</button>
-  </div>
-
-  <div class="modes">
-    <a class="mode-btn" href="game.html?mode=endless" id="endless-btn">
-      <div class="tag">A1</div>
-      <div class="title">Endless</div>
-      <div class="desc">Random road every round. No account needed — sign in to see how your score compares to everyone else's average.</div>
-    </a>
-    <a class="mode-btn locked" href="game.html?mode=daily" id="daily-btn">
-      <div class="tag">B2</div>
-      <div class="title">Daily Road</div>
-      <div class="desc" id="daily-desc">Sign in to play — everyone gets the same road each day, one attempt.</div>
-    </a>
-    <a class="mode-btn locked" href="#" id="onevone-btn">
-      <div class="tag">C3</div>
-      <div class="title">1v1</div>
-      <div class="desc">Sign in to challenge a friend to the same road and compare scores.</div>
-    </a>
-  </div>
-
-  <div class="card" id="onevone-card" style="display:none;">
-    <div class="section-title">1v1 Match</div>
-    <div class="row" style="margin-bottom:8px;">
-      <button id="create-match-btn">Create new match</button>
-      <button class="secondary" id="join-match-btn">Join with a code</button>
-    </div>
-    <div class="muted" id="match-status"></div>
-  </div>
-
-  <div class="card">
-    <div class="section-title">Leaderboard</div>
-    <div class="tabs">
-      <button class="active" data-mode="daily" data-scope="daily">Today</button>
-      <button data-mode="daily" data-scope="all-time">Daily · all-time</button>
-      <button data-mode="endless" data-scope="all-time">Endless · all-time</button>
-    </div>
-    <div id="leaderboard-list" class="muted">Loading…</div>
-  </div>
+<div class="card" id="auth-card">
+<div id="auth-status" class="muted">Checking sign-in status…</div>
+<div id="auth-form" style="display:none;">
+<div class="row" style="margin-bottom:8px;">
+<input type="text" id="username-input" placeholder="username" autocomplete="username" />
+<input type="password" id="password-input" placeholder="password" autocomplete="current-password" />
+</div>
+<div class="row" style="margin-bottom:8px;">
+<button id="signin-btn">Sign in</button>
+<button class="secondary" id="signup-btn">Create account</button>
+</div>
+<div class="muted">Sign in to save scores, appear on the leaderboard, or play with friends. Endless play works fine without an account.</div>
+</div>
+<button class="secondary" id="signout-btn" style="display:none;">Sign out</button>
 </div>
 
+<div class="modes">
+<a class="mode-btn" href="game.html?mode=endless" id="endless-btn">
+<div class="tag">A1</div>
+<div class="title">Endless</div>
+<div class="desc">Random road every round. No account needed — sign in to see how your score compares to everyone else's average.</div>
+</a>
+<a class="mode-btn locked" href="game.html?mode=daily" id="daily-btn">
+<div class="tag">B2</div>
+<div class="title">Daily Road</div>
+<div class="desc" id="daily-desc">Sign in to play — everyone gets the same road each day, one attempt.</div>
+</a>
+<a class="mode-btn locked" href="#" id="multiplayer-btn">
+<div class="tag">C3</div>
+<div class="title">Multiplayer</div>
+<div class="desc">Sign in to create or join a lobby of up to 10 players and race through a set of rounds together.</div>
+</a>
+</div>
+
+<div class="card" id="multiplayer-card" style="display:none;">
+<div class="section-title">Multiplayer Lobby</div>
+<div class="muted" style="margin-bottom:12px;">Create a lobby (up to 10 players, 1–100 rounds, public or private) or join one with a code or a shared link.</div>
+<div class="row">
+<button id="create-lobby-btn">Create a lobby</button>
+<button class="secondary" id="join-lobby-btn">Join with a code</button>
+</div>
+</div>
+
+<div class="card">
+<div class="section-title">Leaderboard</div>
+<div class="tabs">
+<button class="active" data-mode="daily" data-scope="daily">Today</button>
+<button data-mode="daily" data-scope="all-time">Daily · all-time</button>
+<button data-mode="endless" data-scope="all-time">Endless · all-time</button>
+</div>
+<div id="leaderboard-list" class="muted">Loading…</div>
+</div>
+</div>
 <script src="js/supabase-client.js"></script>
 <script>
 (async function () {
-  const $ = (id) => document.getElementById(id);
-  let user = null;
+const $ = (id) => document.getElementById(id);
+let user = null;
 
-  async function refreshAuthUI() {
-    user = await window.SB.getUser();
-    if (user) {
-      const profile = await window.SB.ensureProfile(user);
-      $("auth-status").textContent = `Signed in as ${profile ? profile.display_name : user.email}`;
-      $("auth-form").style.display = "none";
-      $("signout-btn").style.display = "inline-block";
-      $("daily-btn").classList.remove("locked");
-      $("daily-btn").href = "game.html?mode=daily";
-      $("daily-desc").textContent = "One road a day, same for everyone. Highest score wins the day.";
-      $("onevone-btn").classList.remove("locked");
-      $("onevone-btn").querySelector(".desc").textContent = "Create a match or join a friend's below.";
-      $("onevone-card").style.display = "block";
+async function refreshAuthUI() {
+user = await window.SB.getUser();
+if (user) {
+const profile = await window.SB.ensureProfile(user);
+$("auth-status").textContent = `Signed in as ${profile ? profile.display_name : user.email}`;
+$("auth-form").style.display = "none";
+$("signout-btn").style.display = "inline-block";
+$("daily-btn").classList.remove("locked");
+$("daily-btn").href = "game.html?mode=daily";
+$("daily-desc").textContent = "One road a day, same for everyone. Highest score wins the day.";
+$("multiplayer-btn").classList.remove("locked");
+$("multiplayer-btn").querySelector(".desc").textContent = "Create a lobby or join a friend's below.";
+$("multiplayer-card").style.display = "block";
 
-      const already = await window.SB.hasPlayedDailyToday(user.id);
-      if (already) $("daily-desc").textContent = `Already played today — your score: ${already.score}`;
-    } else {
-      $("auth-status").textContent = "Not signed in.";
-      $("auth-form").style.display = "block";
-      $("signout-btn").style.display = "none";
-      $("daily-btn").classList.add("locked");
-      $("daily-btn").removeAttribute("href");
-      $("onevone-btn").classList.add("locked");
-      $("onevone-card").style.display = "none";
-    }
-  }
+const already = await window.SB.hasPlayedDailyToday(user.id);
+if (already) $("daily-desc").textContent = `Already played today — your score: ${already.score}`;
+} else {
+$("auth-status").textContent = "Not signed in.";
+$("auth-form").style.display = "block";
+$("signout-btn").style.display = "none";
+$("daily-btn").classList.add("locked");
+$("daily-btn").removeAttribute("href");
+$("multiplayer-btn").classList.add("locked");
+$("multiplayer-card").style.display = "none";
+}
+}
 
-  $("signup-btn").addEventListener("click", async () => {
-    const username = $("username-input").value.trim();
-    const password = $("password-input").value;
-    if (!username || !password) { $("auth-status").textContent = "Enter a username and password first."; return; }
-    if (password.length < 6) { $("auth-status").textContent = "Password needs to be at least 6 characters."; return; }
-    const { error } = await window.SB.signUpWithUsername(username, password);
-    if (error) { $("auth-status").textContent = `Error: ${error.message}`; return; }
-    await refreshAuthUI();
-  });
-  $("signin-btn").addEventListener("click", async () => {
-    const username = $("username-input").value.trim();
-    const password = $("password-input").value;
-    if (!username || !password) { $("auth-status").textContent = "Enter a username and password."; return; }
-    const { error } = await window.SB.signInWithUsername(username, password);
-    if (error) { $("auth-status").textContent = `Error: ${error.message}`; return; }
-    await refreshAuthUI();
-  });
-  $("signout-btn").addEventListener("click", async () => {
-    await window.SB.signOut();
-    await refreshAuthUI();
-  });
+$("signup-btn").addEventListener("click", async () => {
+const username = $("username-input").value.trim();
+const password = $("password-input").value;
+if (!username || !password) { $("auth-status").textContent = "Enter a username and password first."; return; }
+if (password.length < 6) { $("auth-status").textContent = "Password needs to be at least 6 characters."; return; }
+const { error } = await window.SB.signUpWithUsername(username, password);
+if (error) { $("auth-status").textContent = `Error: ${error.message}`; return; }
+await refreshAuthUI();
+});
 
-  $("onevone-btn").addEventListener("click", (e) => {
-    e.preventDefault();
-    if ($("onevone-card").style.display === "block") {
-      $("onevone-card").scrollIntoView({ behavior: "smooth" });
-    }
-  });
+$("signin-btn").addEventListener("click", async () => {
+const username = $("username-input").value.trim();
+const password = $("password-input").value;
+if (!username || !password) { $("auth-status").textContent = "Enter a username and password."; return; }
+const { error } = await window.SB.signInWithUsername(username, password);
+if (error) { $("auth-status").textContent = `Error: ${error.message}`; return; }
+await refreshAuthUI();
+});
 
-  $("create-match-btn").addEventListener("click", async () => {
-    if (!user) return;
-    // Road gets assigned once the creator's game.html loads the road
-    // dataset (this page doesn't have it) — road_id -1 means "not yet set".
-    const match = await window.SB.createMatch({ playerId: user.id, roadId: -1, roadName: "" });
-    if (!match) { $("match-status").textContent = "Couldn't create match."; return; }
-    location.href = `lobby.html?match=${match.id}&as=host`;
-  });
+$("signout-btn").addEventListener("click", async () => {
+await window.SB.signOut();
+await refreshAuthUI();
+});
 
-  $("join-match-btn").addEventListener("click", () => {
-    location.href = "lobby.html";
-  });
+$("multiplayer-btn").addEventListener("click", (e) => {
+e.preventDefault();
+if ($("multiplayer-card").style.display === "block") {
+$("multiplayer-card").scrollIntoView({ behavior: "smooth" });
+}
+});
 
-  // ---------- leaderboard ----------
-  async function loadLeaderboard(mode, scope) {
-    $("leaderboard-list").textContent = "Loading…";
+$("create-lobby-btn").addEventListener("click", () => {
+location.href = "lobby.html"; // opens the create/join screen; pick "Create a lobby" there
+});
 
-    // Spoiler guard: don't reveal today's road name (or that a score
-    // exists against it) to anyone who hasn't played it themselves yet.
-    if (mode === "daily" && scope === "daily") {
-      const already = user ? await window.SB.hasPlayedDailyToday(user.id) : null;
-      if (!already) {
-        $("leaderboard-list").textContent = user
-          ? "Play today's road first to see today's leaderboard."
-          : "Sign in and play today's road first to see today's leaderboard.";
-        return;
-      }
-    }
+$("join-lobby-btn").addEventListener("click", () => {
+location.href = "lobby.html";
+});
 
-    const rows = await window.SB.leaderboard({ mode, scope });
-    if (!rows.length) { $("leaderboard-list").textContent = "No scores yet."; return; }
-    $("leaderboard-list").innerHTML = rows
-      .map((r, i) => `<div class="lb-row"><span class="who">${i + 1}. ${r.profiles ? r.profiles.display_name : "?"} — ${r.road_name}</span><span>${r.score}</span></div>`)
-      .join("");
-  }
-  document.querySelectorAll(".tabs button").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      loadLeaderboard(btn.dataset.mode, btn.dataset.scope);
-    });
-  });
+// ---------- leaderboard ----------
+async function loadLeaderboard(mode, scope) {
+$("leaderboard-list").textContent = "Loading…";
+// Spoiler guard: don't reveal today's road name (or that a score
+// exists against it) to anyone who hasn't played it themselves yet.
+if (mode === "daily" && scope === "daily") {
+const already = user ? await window.SB.hasPlayedDailyToday(user.id) : null;
+if (!already) {
+$("leaderboard-list").textContent = user
+? "Play today's road first to see today's leaderboard."
+: "Sign in and play today's road first to see today's leaderboard.";
+return;
+}
+}
+const rows = await window.SB.leaderboard({ mode, scope });
+if (!rows.length) { $("leaderboard-list").textContent = "No scores yet."; return; }
+$("leaderboard-list").innerHTML = rows
+.map((r, i) => `<div class="lb-row"><span class="who">${i + 1}. ${r.profiles ? r.profiles.display_name : "?"} — ${r.road_name}</span><span>${r.score}</span></div>`)
+.join("");
+}
 
-  window.SB.onAuthChange(refreshAuthUI);
-  await refreshAuthUI();
-  await loadLeaderboard("daily", "daily");
+document.querySelectorAll(".tabs button").forEach((btn) => {
+btn.addEventListener("click", () => {
+document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+btn.classList.add("active");
+loadLeaderboard(btn.dataset.mode, btn.dataset.scope);
+});
+});
+
+window.SB.onAuthChange(refreshAuthUI);
+await refreshAuthUI();
+await loadLeaderboard("daily", "daily");
 })();
 </script>
 </body>
