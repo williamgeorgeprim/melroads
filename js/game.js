@@ -119,6 +119,9 @@
         onLobbyChange: async (row) => {
           if (row.status === "complete") await showLobbyResults();
           else if (row.current_round > round) await advanceLobbyRound(row.current_round);
+          if (row.status === "complete" && row.rematch_lobby_id) {
+            if (!isHost) { window.LOBBY.rememberLobby(row.rematch_lobby_id); location.href = `lobby.html?lobby=${row.rematch_lobby_id}`; }
+          }
         },
         onPlayersChange: async () => {
           const players = await window.LOBBY.getPlayers(LOBBY_ID);
@@ -205,6 +208,14 @@
       })
       .join("") || '<div class="hint">No scores recorded.</div>';
     $("results-overlay").classList.add("show");
+
+    if (isHost) {
+      $("results-rematch-btn").style.display = "block";
+      $("results-rematch-status").style.display = "none";
+    } else {
+      $("results-rematch-btn").style.display = "none";
+      $("results-rematch-status").style.display = "block";
+    }
   }
 
   async function initGame() {
@@ -309,12 +320,54 @@
       await winGame();
     } else {
       spend(CONFIG.COST_WRONG_GUESS);
-      logEntry(`Guess: ${refRoad.name}`, "Incorrect", "neg");
+      const km = window.Engine.centerDistanceKm(refRoad, target);
+      const distLabel = km < 1 ? `${Math.round(km * 1000)}m away` : `${km.toFixed(1)}km away`;
+      logEntry(`Guess: ${refRoad.name}`, `Incorrect — ${distLabel}`, "neg");
     }
   });
 
+  // ---------- confetti (correct-guess celebration) ----------
+  function fireConfetti() {
+    const canvas = document.createElement("canvas");
+    canvas.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:100;";
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext("2d");
+    const colors = ["#4ADE80", "#22c55e", "#fbbf24", "#eaeef3", "#6EE7B7"];
+    const pieces = Array.from({ length: 140 }, () => ({
+      x: Math.random() * canvas.width,
+      y: -20 - Math.random() * canvas.height * 0.4,
+      w: 6 + Math.random() * 5,
+      h: 8 + Math.random() * 6,
+      vy: 2 + Math.random() * 3,
+      vx: -1.5 + Math.random() * 3,
+      rot: Math.random() * Math.PI,
+      vr: -0.2 + Math.random() * 0.4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    }));
+    const start = performance.now();
+    function frame(now) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let anyVisible = false;
+      for (const p of pieces) {
+        p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+        if (p.y < canvas.height + 20) anyVisible = true;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+      if (anyVisible && now - start < 3500) requestAnimationFrame(frame);
+      else canvas.remove();
+    }
+    requestAnimationFrame(frame);
+  }
+
   async function winGame() {
     gameOver = true;
+    fireConfetti();
     const banner = $("status-banner");
     banner.className = "win";
     banner.textContent = `🎉 Correct! It was ${target.name}. Final score: ${score}`;
@@ -338,6 +391,32 @@
       else banner.textContent += " — waiting on other players to finish this round...";
     }
   }
+
+  $("results-rematch-btn").addEventListener("click", async () => {
+    if (!isHost || !user) return;
+    $("results-rematch-btn").disabled = true;
+    $("results-rematch-btn").textContent = "Starting rematch…";
+    try {
+      const oldLobby = await window.LOBBY.getLobby(LOBBY_ID);
+      const players = await window.LOBBY.getPlayers(LOBBY_ID);
+      const otherUserIds = players.filter((p) => p.status === "joined" && p.user_id !== user.id).map((p) => p.user_id);
+
+      const newLobby = await window.LOBBY.createLobby({
+        hostId: user.id, maxPlayers: oldLobby.max_players, totalRounds: oldLobby.total_rounds, isPublic: oldLobby.is_public,
+      });
+      if (!newLobby) throw new Error("createLobby failed");
+
+      await window.LOBBY.addPlayers({ lobbyId: newLobby.id, userIds: otherUserIds });
+      await window.LOBBY.setRematchLink({ oldLobbyId: LOBBY_ID, newLobbyId: newLobby.id });
+      window.LOBBY.rememberLobby(newLobby.id);
+      location.href = `lobby.html?lobby=${newLobby.id}`;
+    } catch (e) {
+      console.error(e);
+      $("results-rematch-btn").disabled = false;
+      $("results-rematch-btn").textContent = "Rematch — same players";
+      alert("Couldn't start a rematch — try again.");
+    }
+  });
 
   $("results-home-btn").addEventListener("click", () => { location.href = "index.html"; });
 

@@ -117,6 +117,19 @@
     return data || [];
   }
 
+  // Best-ever single-round score for this player, per mode. Used for the
+  // "Your best" badges on the mode tiles — separate from today's daily
+  // result, this is the all-time high for that mode.
+  async function personalBests(userId) {
+    async function bestFor(mode) {
+      const { data, error } = await client.from("scores").select("score").eq("user_id", userId).eq("mode", mode).order("score", { ascending: false }).limit(1).maybeSingle();
+      if (error) console.error("personalBests error", error);
+      return data ? data.score : null;
+    }
+    const [daily, endless] = await Promise.all([bestFor("daily"), bestFor("endless")]);
+    return { daily, endless };
+  }
+
   // ---------- lobbies (multiplayer, 2-10 players — replaces the old 1v1 mode) ----------
 
   const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
@@ -159,6 +172,33 @@
   async function getLobbyByShareToken(token) {
     const { data } = await client.from("lobbies").select("*").eq("share_token", token).single();
     return data || null;
+  }
+
+  // Open public lobbies anyone can join without a code — see the
+  // public_open_lobbies view in supabase-schema.sql.
+  async function getOpenPublicLobbies(limit = 10) {
+    const { data, error } = await client.from("public_open_lobbies").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (error) console.error("getOpenPublicLobbies error", error);
+    return data || [];
+  }
+
+  // Bulk-adds players to a freshly created lobby (used for rematches, so
+  // everyone from the last game lands straight in the new one instead of
+  // re-entering a code). Silently no-ops on conflict (already a member).
+  async function addPlayers({ lobbyId, userIds }) {
+    if (!userIds.length) return true;
+    const rows = userIds.map((user_id) => ({ lobby_id: lobbyId, user_id, is_host: false }));
+    const { error } = await client.from("lobby_players").insert(rows);
+    if (error && error.code !== "23505") { console.error("addPlayers error", error); return false; }
+    return true;
+  }
+
+  // Links a completed lobby to its rematch — everyone still watching the
+  // results screen picks this up over realtime and is bounced into the
+  // new lobby's waiting room.
+  async function setRematchLink({ oldLobbyId, newLobbyId }) {
+    const { error } = await client.from("lobbies").update({ rematch_lobby_id: newLobbyId }).eq("id", oldLobbyId);
+    return !error;
   }
 
   async function getPlayers(lobbyId) {
@@ -274,12 +314,12 @@
   window.SB = {
     client,
     getUser, getProfile, signUpWithUsername, signInWithUsername, signOut, ensureProfile, onAuthChange,
-    submitScore, hasPlayedDailyToday, endlessAverageForRoad, leaderboard, allTimeLeaderboard,
+    submitScore, hasPlayedDailyToday, endlessAverageForRoad, leaderboard, allTimeLeaderboard, personalBests,
   };
 
   window.LOBBY = {
-    createLobby, getLobby, getLobbyByCode, getLobbyByShareToken, getPlayers,
-    joinLobby, leaveLobby, kickPlayer, updateSettings, setRoundRoad, startLobby,
+    createLobby, getLobby, getLobbyByCode, getLobbyByShareToken, getOpenPublicLobbies, getPlayers,
+    joinLobby, leaveLobby, kickPlayer, updateSettings, setRoundRoad, startLobby, addPlayers, setRematchLink,
     submitRoundScore, getLiveLeaderboard, openLobbyChannel, broadcastLiveScore,
     rememberLobby, forgetLobby, getRememberedLobbyId,
   };
@@ -553,8 +593,12 @@ window.Engine = (function () {
     return new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Melbourne" });
   }
 
+  function centerDistanceKm(roadA, roadB) {
+    return haversine(roadA.c, roadB.c) / 1000;
+  }
+
   return {
-    loadRoads, compareAxis, suburbFor,
+    loadRoads, compareAxis, suburbFor, centerDistanceKm,
     pickRandomTarget, pickDailyTarget, findById, todayStr,
   };
 })();
