@@ -16,6 +16,8 @@
   let user = null, isPlayerA = true, isHost = false;
   let matchChannel = null, oppLiveScore = CONFIG.STARTING_POINTS;
   let lobbyChannel = null, round = 0, lobbyTotalRounds = 1;
+  let liveScores = new Map();      // userId -> in-progress score for the current round (lobby mode)
+  let lastLeaderboardRows = [];    // cached result of the last DB leaderboard fetch (lobby mode)
 
   const $ = (id) => document.getElementById(id);
   $("cost-ns").textContent = `−${CONFIG.COST_NORTH_SOUTH_QUESTION}`;
@@ -32,6 +34,9 @@
     if (MODE === "1v1" && !gameOver) {
       $("you-score").textContent = score;
       if (matchChannel) window.SB.broadcastScore(matchChannel, { isPlayerA, score });
+    }
+    if (MODE === "lobby" && !gameOver && lobbyChannel && user) {
+      window.LOBBY.broadcastLiveScore(lobbyChannel, { userId: user.id, score });
     }
   }
   function logEntry(q, a, cls) {
@@ -177,18 +182,23 @@
     window.SB.broadcastScore(matchChannel, { isPlayerA, score });
   }
 
-  // ---------- lobby mode: leaderboard panel + round transitions ----------
-  // NOTE: this assumes game.html has a #lobby-panel block with
-  // #lobby-round-label and #lobby-leaderboard inside it — see the
-  // markup snippet in the accompanying notes if it isn't there yet.
+  // ---------- lobby mode: live leaderboard panel + round transitions ----------
+  // NOTE: assumes game.html has a #lobby-panel block containing
+  // #lobby-round-label and #lobby-leaderboard — see the markup/CSS
+  // snippet in the accompanying notes if it isn't there yet.
   async function setUpLobbyPanel(lobby) {
     $("lobby-panel").style.display = "block";
     $("lobby-round-label").textContent = `Round ${round} / ${lobbyTotalRounds}`;
+    liveScores.clear();
     await refreshLeaderboard();
 
     if (!lobbyChannel) {
       lobbyChannel = window.LOBBY.openLobbyChannel(LOBBY_ID, {
-        onScoreChange: refreshLeaderboard,
+        onScoreChange: refreshLeaderboard, // a round score landed in the DB — totals changed
+        onLiveScoreBroadcast: (payload) => {
+          liveScores.set(payload.userId, payload.score);
+          renderLeaderboard(); // cheap, no DB hit — just re-render with the new live number
+        },
         onLobbyChange: async (row) => {
           if (row.status === "complete") {
             await showLobbyResults();
@@ -196,23 +206,65 @@
             await advanceLobbyRound(row.current_round);
           }
         },
+        onPlayersChange: async () => {
+          const players = await window.LOBBY.getPlayers(LOBBY_ID);
+          const me = players.find((p) => p.user_id === user.id);
+          if (me && me.status === "kicked") {
+            alert("You were removed from this lobby by the host.");
+            location.href = "index.html";
+            return;
+          }
+          await refreshLeaderboard();
+        },
       });
     }
+    // Announce our starting score for this round so everyone's panel is accurate immediately.
+    window.LOBBY.broadcastLiveScore(lobbyChannel, { userId: user.id, score });
   }
 
   async function refreshLeaderboard() {
-    const rows = await window.LOBBY.getLiveLeaderboard(LOBBY_ID);
+    lastLeaderboardRows = await window.LOBBY.getLiveLeaderboard(LOBBY_ID);
+    renderLeaderboard();
+  }
+
+  // Renders from cached DB rows + the live in-round broadcasts, without
+  // hitting the database — safe to call on every keystroke-speed broadcast.
+  function renderLeaderboard() {
     const list = $("lobby-leaderboard");
     if (!list) return;
+
+    const rows = lastLeaderboardRows
+      .map((r) => {
+        // A player who's already finished this round has their round
+        // score counted in `total` already — don't add their (now stale)
+        // live broadcast on top of that.
+        const inRoundLive = r.doneThisRound ? 0 : (liveScores.has(r.userId) ? liveScores.get(r.userId) : CONFIG.STARTING_POINTS);
+        return { ...r, displayScore: r.total + inRoundLive };
+      })
+      .sort((a, b) => b.displayScore - a.displayScore);
+
     list.innerHTML = rows
-      .map(
-        (r) => `
-      <div class="lb-row${user && r.userId === user.id ? " me" : ""}">
-        <span class="lb-name">${r.name}${r.doneThisRound ? " ✓" : ""}</span>
-        <span class="lb-total">${r.total}</span>
-      </div>`
-      )
+      .map((r) => {
+        const isMe = user && r.userId === user.id;
+        const kickBtn = isHost && !isMe
+          ? `<button class="lb-kick" data-kick="${r.userId}" title="Remove from lobby">✕</button>`
+          : "";
+        return `<div class="lb-row${isMe ? " me" : ""}">
+          <span class="lb-name">${r.name}${r.doneThisRound ? " ✓" : ""}</span>
+          <span class="lb-live${r.displayScore < 0 ? " negative" : ""}">${r.displayScore}</span>
+          ${kickBtn}
+        </div>`;
+      })
       .join("");
+
+    list.querySelectorAll("[data-kick]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Remove this player from the lobby?")) return;
+        await window.LOBBY.kickPlayer({ lobbyId: LOBBY_ID, userId: btn.dataset.kick });
+        // The kicked player's own onPlayersChange handles redirecting them;
+        // ours will fire too and refresh the list once the row updates.
+      });
+    });
   }
 
   async function advanceLobbyRound(newRound) {
@@ -227,7 +279,7 @@
     map.setFilter("roads-selected", ["==", ["get", "id"], -1]);
     map.setPaintProperty("roads-selected", "line-color", "#4f8cff");
 
-    target = await pickTargetForMode(); // re-enters the lobby branch above
+    target = await pickTargetForMode(); // re-enters the lobby branch above, which also refreshes the panel
     $("search-input").disabled = false;
   }
 

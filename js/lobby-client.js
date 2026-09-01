@@ -109,6 +109,9 @@
     await client.from("lobby_players").update({ status: "left" }).eq("lobby_id", lobbyId).eq("user_id", userId);
   }
 
+  // Works during the waiting room AND mid-game — the round-advance RPC
+  // already only counts players with status = 'joined', so kicking
+  // someone mid-round lets the round complete without waiting on them.
   async function kickPlayer({ lobbyId, userId }) {
     const { error } = await client
       .from("lobby_players")
@@ -163,7 +166,9 @@
   }
 
   // Live, whole-lobby leaderboard: total score per player summed across
-  // rounds played so far, plus whether they've finished the *current* round.
+  // rounds *completed* so far, plus whether they've finished the current
+  // round. Doesn't include in-progress round scores — for that, see the
+  // broadcastLiveScore / onLiveScoreBroadcast pair below.
   async function getLiveLeaderboard(lobbyId) {
     const [{ data: players }, { data: scores }, lobby] = await Promise.all([
       client.from("lobby_players").select("user_id, profiles(display_name)").eq("lobby_id", lobbyId).eq("status", "joined"),
@@ -189,8 +194,11 @@
 
   // ---------- realtime ----------
   // Fires on any change to the lobby row, its player list, or round scores —
-  // hand it one callback and re-fetch whatever you need inside it.
-  function openLobbyChannel(lobbyId, { onLobbyChange, onPlayersChange, onScoreChange } = {}) {
+  // hand it one callback and re-fetch whatever you need inside it. Also
+  // carries a lightweight in-round score broadcast (onLiveScoreBroadcast)
+  // that doesn't touch the DB at all, so it's cheap enough to fire on
+  // every question/guess without hammering Supabase.
+  function openLobbyChannel(lobbyId, { onLobbyChange, onPlayersChange, onScoreChange, onLiveScoreBroadcast } = {}) {
     const channel = client
       .channel(`lobby:${lobbyId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "lobbies", filter: `id=eq.${lobbyId}` }, (payload) => {
@@ -202,8 +210,17 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "lobby_round_scores", filter: `lobby_id=eq.${lobbyId}` }, (payload) => {
         onScoreChange && onScoreChange(payload);
       })
+      .on("broadcast", { event: "live-score" }, (msg) => {
+        onLiveScoreBroadcast && onLiveScoreBroadcast(msg.payload);
+      })
       .subscribe();
     return channel; // caller can client.removeChannel(channel) on unload if desired
+  }
+
+  // In-round-only score, per player. Not persisted — purely for the
+  // live "everyone's current score" view while a round is in progress.
+  function broadcastLiveScore(channel, { userId, score }) {
+    channel.send({ type: "broadcast", event: "live-score", payload: { userId, score } });
   }
 
   // ---------- rejoin-after-refresh helper ----------
@@ -235,6 +252,7 @@
     submitRoundScore,
     getLiveLeaderboard,
     openLobbyChannel,
+    broadcastLiveScore,
     rememberLobby,
     forgetLobby,
     getRememberedLobbyId,
