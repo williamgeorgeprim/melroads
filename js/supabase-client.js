@@ -133,13 +133,36 @@
 
   // ---------- 1v1 matches ----------
 
+  // 6-letter code, avoiding easily-confused characters (0/O, 1/I).
+  function generateMatchCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
   async function createMatch({ playerId, roadId, roadName }) {
+    // small retry loop in case of a code collision (rare)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = generateMatchCode();
+      const { data, error } = await client
+        .from("matches")
+        .insert({ player_a: playerId, road_id: roadId, road_name: roadName, status: "waiting", code })
+        .select()
+        .single();
+      if (!error) return data;
+      if (error.code !== "23505") { console.error("createMatch error", error); return null; } // not a unique-violation, give up
+    }
+    return null;
+  }
+
+  async function getMatchByCode(code) {
     const { data, error } = await client
       .from("matches")
-      .insert({ player_a: playerId, road_id: roadId, road_name: roadName, status: "waiting" })
-      .select()
-      .single();
-    if (error) console.error("createMatch error", error);
+      .select("*")
+      .eq("code", code.trim().toUpperCase())
+      .maybeSingle();
+    if (error) console.error("getMatchByCode error", error);
     return data;
   }
 
@@ -172,15 +195,33 @@
     return data;
   }
 
-  function subscribeToMatch(matchId, onChange) {
-    return client
-      .channel(`match-${matchId}`)
-      .on(
+  // One realtime channel per match, reused for both:
+  //  - row UPDATEs (opponent joining, match completing)
+  //  - lightweight score broadcasts (live scoreboard while playing —
+  //    these don't touch the DB, so they're cheap and instant)
+  function openMatchChannel(matchId, { onRowChange, onScoreBroadcast } = {}) {
+    const channel = client.channel(`match-${matchId}`);
+    if (onRowChange) {
+      channel.on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
-        (payload) => onChange(payload.new)
-      )
-      .subscribe();
+        (payload) => onRowChange(payload.new)
+      );
+    }
+    if (onScoreBroadcast) {
+      channel.on("broadcast", { event: "score" }, (msg) => onScoreBroadcast(msg.payload));
+    }
+    channel.subscribe();
+    return channel;
+  }
+
+  function broadcastScore(channel, { isPlayerA, score }) {
+    channel.send({ type: "broadcast", event: "score", payload: { isPlayerA, score } });
+  }
+
+  // Kept for compatibility with any existing callers.
+  function subscribeToMatch(matchId, onChange) {
+    return openMatchChannel(matchId, { onRowChange: onChange });
   }
 
   window.SB = {
@@ -197,9 +238,12 @@
     endlessAverageForRoad,
     leaderboard,
     createMatch,
+    getMatchByCode,
     joinMatch,
     getMatch,
     submitMatchScore,
     subscribeToMatch,
+    openMatchChannel,
+    broadcastScore,
   };
 })();

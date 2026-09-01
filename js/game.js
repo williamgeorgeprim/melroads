@@ -12,6 +12,7 @@
   let score = CONFIG.STARTING_POINTS;
   let target = null, refRoad = null, gameOver = false;
   let user = null, isPlayerA = true;
+  let matchChannel = null, oppLiveScore = CONFIG.STARTING_POINTS;
 
   const $ = (id) => document.getElementById(id);
   $("cost-ns").textContent = `−${CONFIG.COST_NORTH_SOUTH_QUESTION}`;
@@ -26,6 +27,10 @@
   function fmtScore() {
     $("score").textContent = score;
     $("score").classList.toggle("negative", score < 0);
+    if (MODE === "1v1" && !gameOver) {
+      $("you-score").textContent = score;
+      if (matchChannel) window.SB.broadcastScore(matchChannel, { isPlayerA, score });
+    }
   }
   function logEntry(q, a, cls) {
     const log = $("log");
@@ -93,6 +98,7 @@
           .select()
           .single();
         if (!error) match = data;
+        await setUpVersusStrip(match);
         return picked;
       }
 
@@ -107,9 +113,38 @@
         match = await window.SB.getMatch(MATCH_ID);
         tries++;
       }
+      await setUpVersusStrip(match);
       return window.Engine.findById(ROADS, match.road_id);
     }
     return window.Engine.pickRandomTarget(ROADS); // endless
+  }
+
+  // Shows the live "You vs Opponent" strip and opens the realtime
+  // channel used for both live score broadcasts and the final reveal.
+  async function setUpVersusStrip(match) {
+    const oppId = isPlayerA ? match.player_b : match.player_a;
+    if (oppId) {
+      const oppProfile = await window.SB.getProfile(oppId);
+      $("opp-name").textContent = oppProfile ? oppProfile.display_name : "Opponent";
+    }
+    $("versus-strip").style.display = "flex";
+    $("you-score").textContent = score;
+    $("opp-score").textContent = oppLiveScore;
+
+    matchChannel = window.SB.openMatchChannel(MATCH_ID, {
+      onScoreBroadcast: (payload) => {
+        // Only care about the opponent's own broadcasts.
+        if (payload.isPlayerA !== isPlayerA) {
+          oppLiveScore = payload.score;
+          $("opp-score").textContent = oppLiveScore;
+        }
+      },
+      onRowChange: (row) => {
+        if (row.status === "complete" && gameOver) revealMatchResult(row);
+      },
+    });
+    // Announce our starting score so the opponent's strip is accurate immediately.
+    window.SB.broadcastScore(matchChannel, { isPlayerA, score });
   }
 
   async function initGame() {
@@ -250,16 +285,21 @@
     } else if (MODE === "daily") {
       await window.SB.submitScore({ userId: user.id, mode: "daily", roadId: target.id, roadName: target.name, score });
     } else if (MODE === "1v1") {
-      await window.SB.submitMatchScore({ matchId: MATCH_ID, playerId: user.id, isPlayerA, score });
-      banner.textContent += " — waiting on your opponent to finish...";
-      window.SB.subscribeToMatch(MATCH_ID, (row) => {
-        if (row.status === "complete") {
-          const oppScore = isPlayerA ? row.score_b : row.score_a;
-          const result = score > oppScore ? "You won! 🏆" : score < oppScore ? "You lost." : "It's a tie.";
-          banner.textContent = `${result} Your score: ${score} — Opponent: ${oppScore}`;
-        }
-      });
+      const updated = await window.SB.submitMatchScore({ matchId: MATCH_ID, playerId: user.id, isPlayerA, score });
+      if (updated && updated.score_a != null && updated.score_b != null) {
+        revealMatchResult(updated); // opponent had already finished
+      } else {
+        banner.textContent += " — waiting on your opponent to finish...";
+      }
     }
+  }
+
+  function revealMatchResult(row) {
+    const oppScore = isPlayerA ? row.score_b : row.score_a;
+    const banner = $("status-banner");
+    const result = score > oppScore ? "You won! 🏆" : score < oppScore ? "You lost." : "It's a tie.";
+    banner.textContent = `${result} Your score: ${score} — Opponent: ${oppScore}`;
+    $("opp-score").textContent = oppScore;
   }
 
   $("reset-btn").addEventListener("click", async () => {
