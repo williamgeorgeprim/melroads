@@ -8,7 +8,7 @@
   const MODE = params.get("mode") || "endless"; // 'daily' | 'endless' | '1v1'
   const MATCH_ID = params.get("match");
 
-  let ROADS = [], roadsById = new Map(), M3 = null;
+  let ROADS = [], roadsById = new Map();
   let score = CONFIG.STARTING_POINTS;
   let target = null, refRoad = null, gameOver = false;
   let user = null, isPlayerA = true;
@@ -17,7 +17,6 @@
   const $ = (id) => document.getElementById(id);
   $("cost-ns").textContent = `−${CONFIG.COST_NORTH_SOUTH_QUESTION}`;
   $("cost-ew").textContent = `−${CONFIG.COST_EAST_WEST_QUESTION}`;
-  $("cost-m3").textContent = `−${CONFIG.COST_M3_QUESTION}`;
   $("cost-guess").textContent = `−${CONFIG.COST_WRONG_GUESS} if wrong`;
   $("score").textContent = score;
 
@@ -166,14 +165,12 @@
     console.log("DEBUG target (remove for real play):", target.name, target.id);
     $("reset-btn").disabled = MODE !== "endless"; // daily/1v1 are one-shot
     $("search-input").disabled = false;
-    $("ask-m3").disabled = false;
   }
 
   map.on("load", async () => {
     try {
       const loaded = await window.Engine.loadRoads(CONFIG.DATA_FILE);
       ROADS = loaded.roads;
-      M3 = loaded.M3;
       roadsById = new Map(ROADS.map((r) => [r.id, r]));
     } catch (e) {
       $("loading-banner").textContent = `Couldn't load ${CONFIG.DATA_FILE}. ${e.message}`;
@@ -250,12 +247,6 @@
     if (!refRoad || gameOver) return;
     spend(CONFIG.COST_EAST_WEST_QUESTION);
     logEntry(`Is the target E/W of ${refRoad.name}?`, window.Engine.compareAxis(target, refRoad, "lon"), "neg");
-  });
-  $("ask-m3").addEventListener("click", () => {
-    if (gameOver) return;
-    if (!M3) { logEntry("Is the target inside the M3?", "M3 roads not found in this dataset", "neg"); return; }
-    spend(CONFIG.COST_M3_QUESTION);
-    logEntry("Is the target inside the M3?", window.Engine.roadInsideM3(M3, target) ? "Yes" : "No", "neg");
   });
   $("guess-ref").addEventListener("click", async () => {
     if (!refRoad || gameOver) return;

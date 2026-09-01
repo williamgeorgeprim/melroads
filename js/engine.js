@@ -54,16 +54,75 @@ window.Engine = (function () {
       byName.get(name).push(f);
     }
 
-    // Roughly converts a lon/lat bounding-box gap into metres, using the
-    // midpoint latitude for the lon->metres scale factor.
-    function bboxGapMeters(b1, b2) {
-      const dLon = Math.max(0, Math.max(b1[0] - b2[2], b2[0] - b1[2]));
-      const dLat = Math.max(0, Math.max(b1[1] - b2[3], b2[1] - b1[3]));
-      const midLat = (b1[1] + b1[3] + b2[1] + b2[3]) / 4;
-      const mPerDegLat = 111320;
-      const mPerDegLon = 111320 * Math.cos((midLat * Math.PI) / 180);
-      const dx = dLon * mPerDegLon, dy = dLat * mPerDegLat;
-      return Math.sqrt(dx * dx + dy * dy);
+    // Melbourne's latitude range is narrow enough that one fixed scale
+    // factor (rather than recomputing per-pair) is accurate to well under
+    // a metre anywhere in the dataset — plenty good enough for merging.
+    const REF_LAT = -37.8;
+    const M_PER_DEG_LAT = 111320;
+    const M_PER_DEG_LON = 111320 * Math.cos((REF_LAT * Math.PI) / 180);
+    function toMetres(lon, lat) { return [lon * M_PER_DEG_LON, lat * M_PER_DEG_LAT]; }
+
+    // Merges same-named components whose actual geometry comes within
+    // mergeDistM of each other ANYWHERE along their length — not just
+    // whose overall bounding boxes are close. A whole-bbox gap check
+    // (the previous approach) is a poor proxy for long, bent roads: a
+    // freeway can fragment at one interchange while its two bounding
+    // boxes are large and technically "close" everywhere else, so the
+    // real gap at that one spot gets missed. Checking actual points
+    // via a spatial hash catches that reliably and stays fast even for
+    // roads with thousands of vertices.
+    function mergeCloseComponents(components, mergeDistM) {
+      const cn = components.length;
+      const cparent = Array.from({ length: cn }, (_, i) => i);
+      function cfind(x) { while (cparent[x] !== x) { cparent[x] = cparent[cparent[x]]; x = cparent[x]; } return x; }
+      function cunion(a, b) { const ra = cfind(a), rb = cfind(b); if (ra !== rb) cparent[ra] = rb; }
+
+      const cellSize = mergeDistM;
+      const grid = new Map();
+      const cellKey = (x, y) => Math.floor(x / cellSize) + "," + Math.floor(y / cellSize);
+
+      for (let ci = 0; ci < cn; ci++) {
+        for (const path of components[ci].paths) {
+          for (const [lon, lat] of path) {
+            const [x, y] = toMetres(lon, lat);
+            const key = cellKey(x, y);
+            let bucket = grid.get(key);
+            if (!bucket) grid.set(key, (bucket = []));
+            bucket.push({ ci, x, y });
+          }
+        }
+      }
+
+      for (let ci = 0; ci < cn; ci++) {
+        for (const path of components[ci].paths) {
+          pointLoop:
+          for (const [lon, lat] of path) {
+            const [x, y] = toMetres(lon, lat);
+            const cxk = Math.floor(x / cellSize), cyk = Math.floor(y / cellSize);
+            for (let dx = -1; dx <= 1; dx++) {
+              for (let dy = -1; dy <= 1; dy++) {
+                const bucket = grid.get((cxk + dx) + "," + (cyk + dy));
+                if (!bucket) continue;
+                for (const p of bucket) {
+                  if (p.ci === ci || cfind(p.ci) === cfind(ci)) continue;
+                  if (Math.hypot(p.x - x, p.y - y) <= mergeDistM) {
+                    cunion(ci, p.ci);
+                    continue pointLoop;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const merged = new Map();
+      for (let i = 0; i < cn; i++) {
+        const r = cfind(i);
+        if (!merged.has(r)) merged.set(r, []);
+        merged.get(r).push(components[i]);
+      }
+      return Array.from(merged.values());
     }
 
     const roads = [];
@@ -121,26 +180,14 @@ window.Engine = (function () {
         components.push({ paths, len: totalLen, sumLon, sumLat, count, b: [minLon, minLat, maxLon, maxLat] });
       }
 
-      // Second pass: merge same-named components that sit close together
-      // (median-divided roads) without touching same-named components
-      // far apart (genuinely different streets, e.g. in another suburb).
-      const cn = components.length;
-      const cparent = Array.from({ length: cn }, (_, i) => i);
-      function cfind(x) { while (cparent[x] !== x) { cparent[x] = cparent[cparent[x]]; x = cparent[x]; } return x; }
-      function cunion(a, b) { const ra = cfind(a), rb = cfind(b); if (ra !== rb) cparent[ra] = rb; }
-      for (let i = 0; i < cn; i++) {
-        for (let j = i + 1; j < cn; j++) {
-          if (bboxGapMeters(components[i].b, components[j].b) <= MERGE_DIST_M) cunion(i, j);
-        }
-      }
-      const merged = new Map();
-      for (let i = 0; i < cn; i++) {
-        const r = cfind(i);
-        if (!merged.has(r)) merged.set(r, []);
-        merged.get(r).push(components[i]);
-      }
+      // Second pass: merge same-named components whose real geometry
+      // touches (or nearly touches) somewhere along their length —
+      // median-divided roads and freeway interchanges — without pulling
+      // in same-named components that are genuinely far apart (a
+      // different street with the same name in another suburb).
+      const mergedGroups = mergeCloseComponents(components, MERGE_DIST_M);
 
-      for (const group of merged.values()) {
+      for (const group of mergedGroups) {
         let paths = [], totalLen = 0, sumLon = 0, sumLat = 0, count = 0;
         let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
         for (const c of group) {
@@ -161,29 +208,7 @@ window.Engine = (function () {
       }
     }
 
-    // M3 boundary line
-    const cfg = window.GAME_CONFIG;
-    const m3Names = new Set(cfg.M3_ROAD_NAMES || []);
-    let m3Pts = [];
-    for (const f of feats) if (m3Names.has(f.properties.name)) m3Pts = m3Pts.concat(f.geometry.coordinates);
-    let M3 = null;
-    if (m3Pts.length >= 2) {
-      let west = m3Pts[0], east = m3Pts[0];
-      for (const p of m3Pts) { if (p[0] < west[0]) west = p; if (p[0] > east[0]) east = p; }
-      M3 = { A: west, B: east };
-    }
-
-    return { roads, M3 };
-  }
-
-  function m3Side(M3, lon, lat) {
-    if (!M3) return null;
-    const [Ax, Ay] = M3.A, [Bx, By] = M3.B;
-    return (Bx - Ax) * (lat - Ay) - (By - Ay) * (lon - Ax);
-  }
-
-  function roadInsideM3(M3, road) {
-    return m3Side(M3, road.c[0], road.c[1]) < 0;
+    return { roads };
   }
 
   function compareAxis(t, ref, axis) {
@@ -247,7 +272,7 @@ window.Engine = (function () {
   }
 
   return {
-    loadRoads, roadInsideM3, compareAxis, suburbFor,
+    loadRoads, compareAxis, suburbFor,
     pickRandomTarget, pickDailyTarget, findById, todayStr,
   };
 })();
