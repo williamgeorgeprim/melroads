@@ -172,6 +172,7 @@
     $("ref-section").style.display = "none";
     $("status-banner").style.display = "none";
     $("status-banner").className = "";
+    $("results-overlay").classList.remove("show");
     map.setFilter("roads-selected", ["==", ["get", "id"], -1]);
     map.setPaintProperty("roads-selected", "line-color", "#4f8cff");
   }
@@ -189,10 +190,21 @@
     gameOver = true;
     window.LOBBY.forgetLobby();
     const rows = await window.LOBBY.getLiveLeaderboard(LOBBY_ID);
-    const banner = $("status-banner");
-    banner.className = "win";
-    banner.textContent = `🏁 Lobby complete! ${rows.map((r, i) => `${i + 1}. ${r.name} — ${r.total}`).join(" · ")}`;
-    banner.style.display = "block";
+    $("status-banner").style.display = "none";
+
+    const winner = rows[0];
+    $("results-winner").textContent = winner ? `${winner.name} wins with ${winner.total} points` : "";
+    $("results-list").innerHTML = rows
+      .map((r, i) => {
+        const isMe = user && r.userId === user.id;
+        return `<div class="result-row${i === 0 ? " first" : ""}">
+          <span class="result-rank">${i + 1}</span>
+          <span class="result-name">${r.name}${isMe ? " (you)" : ""}</span>
+          <span class="result-score">${r.total}</span>
+        </div>`;
+      })
+      .join("") || '<div class="hint">No scores recorded.</div>';
+    $("results-overlay").classList.add("show");
   }
 
   async function initGame() {
@@ -326,6 +338,8 @@
       else banner.textContent += " — waiting on other players to finish this round...";
     }
   }
+
+  $("results-home-btn").addEventListener("click", () => { location.href = "index.html"; });
 
   $("leave-lobby-btn").addEventListener("click", async () => {
     if (MODE !== "lobby" || !user) return;
