@@ -271,6 +271,7 @@
   };
 })();
 
+window.Engine = (function () {
   const suburbCache = new Map();
 
   function haversine(a, b) {
