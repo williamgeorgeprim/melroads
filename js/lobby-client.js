@@ -10,7 +10,7 @@
 // so window.SB.getUser() and LOBBY calls see the same signed-in user.
 
 (function () {
-  const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const client = supabase.createClient(window.SUPABASE_CONFIG.URL, window.SUPABASE_CONFIG.ANON_KEY);
 
   const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
   function randomCode(len) {
