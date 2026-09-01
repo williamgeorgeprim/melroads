@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guess the Road — Melbourne</title>
+<link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg: #0f1115; --panel: #161922; --panel-border: #262b38; --text: #e8eaf0;
+  --muted: #8a90a2; --accent: #4f8cff; --accent-2: #6ee7b7; --danger: #ff6b6b; --warn: #ffb84f;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; height:100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--text); }
+#app { display:flex; height:100vh; width:100vw; }
+#map { flex: 1 1 auto; height:100%; position:relative; }
+#panel { width: 380px; min-width: 340px; background: var(--panel); border-left: 1px solid var(--panel-border); display:flex; flex-direction: column; height: 100%; overflow: hidden; }
+.panel-section { padding: 16px 18px; border-bottom: 1px solid var(--panel-border); }
+h1 { font-size: 16px; margin: 0 0 2px 0; letter-spacing:0.3px; }
+.subtitle { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+#score-row { display:flex; align-items:baseline; justify-content:space-between; margin-top:8px; }
+#score { font-size: 32px; font-weight: 700; }
+#score.negative { color: var(--danger); }
+.score-label { color: var(--muted); font-size: 12px; }
+button { font-family: inherit; cursor: pointer; border: 1px solid var(--panel-border); background: #1d2230; color: var(--text); border-radius: 8px; padding: 9px 12px; font-size: 13px; transition: background .15s, border-color .15s; }
+button:hover:not(:disabled) { background:#262c3d; border-color:#3a4256; }
+button:disabled { opacity:.4; cursor:default; }
+button.primary { background: var(--accent); border-color: var(--accent); color:#0b1020; font-weight:600; }
+button.primary:hover:not(:disabled) { background:#3f7ce0; }
+button.small { padding:6px 9px; font-size:12px; }
+button.full { width:100%; }
+input[type=text] { width:100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: #0f1220; color: var(--text); font-size: 13px; }
+input[type=text]:focus { outline: 1px solid var(--accent); }
+.row { display:flex; gap:8px; }
+.row > * { flex:1; }
+.ref-name { font-weight:600; font-size:14px; margin: 2px 0 10px 0; }
+.q-cost { color: var(--muted); font-size:11px; }
+#search-results { max-height: 220px; overflow-y: auto; margin-top: 8px; display:flex; flex-direction:column; gap:4px; }
+.result-item { padding: 8px 10px; border-radius: 8px; background: #1a1f2b; border: 1px solid var(--panel-border); cursor:pointer; font-size: 13px; }
+.result-item:hover { border-color: var(--accent); }
+.result-item .rname { font-weight:600; }
+.result-item .rsub { color: var(--muted); font-size: 11px; margin-top:2px; }
+#log { flex: 1 1 auto; overflow-y: auto; padding: 10px 18px; display:flex; flex-direction: column-reverse; gap: 8px; }
+.log-entry { font-size: 12.5px; line-height:1.4; padding: 8px 10px; border-radius:8px; background:#12151e; border:1px solid var(--panel-border); }
+.log-entry .q { color: var(--muted); }
+.log-entry .a { font-weight:600; }
+.a.neg { color: var(--danger); }
+#status-banner { display:none; padding: 14px 18px; text-align:center; font-weight:700; font-size: 15px; }
+#status-banner.win { display:block; background: rgba(110,231,183,0.15); color: var(--accent-2); border-bottom: 1px solid var(--panel-border); }
+#loading-banner { display:block; padding: 14px 18px; text-align:center; font-weight:600; font-size: 13px; color: var(--muted); }
+.maplibregl-popup-content { background: #1a1f2b; color: var(--text); border-radius:8px; font-size:13px; padding: 10px 12px; }
+.maplibregl-popup-tip { border-top-color:#1a1f2b !important; border-bottom-color:#1a1f2b !important; }
+.popup-name { font-weight:700; margin-bottom:2px; }
+.popup-sub { color: var(--muted); font-size:11px; margin-bottom:8px; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: #2a2f3d; border-radius: 4px; }
+.hint { color:var(--muted); font-size:11px; margin-top:6px; }
+.top-link { color: var(--muted); font-size:11px; text-decoration:none; }
+.top-link:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <div id="panel">
+    <div id="status-banner"></div>
+    <div id="loading-banner">Loading road data…</div>
+    <div class="panel-section">
+      <a class="top-link" href="index.html">&larr; Home</a>
+      <h1 style="margin-top:8px;">Guess the Road</h1>
+      <div class="subtitle" id="mode-label">—</div>
+      <div id="score-row">
+        <div><div id="score">0</div><div class="score-label">points remaining</div></div>
+        <button class="small" id="reset-btn" disabled>New game</button>
+      </div>
+    </div>
+    <div class="panel-section" id="search-section">
+      <input type="text" id="search-input" placeholder="Search for a road (to question or guess)..." autocomplete="off" disabled />
+      <div id="search-results"></div>
+    </div>
+    <div class="panel-section" id="ref-section" style="display:none;">
+      <div class="ref-name" id="ref-name">—</div>
+      <div class="row" style="margin-bottom:8px;">
+        <button id="ask-ns">N / S / Intersect <span class="q-cost" id="cost-ns"></span></button>
+        <button id="ask-ew">E / W / Intersect <span class="q-cost" id="cost-ew"></span></button>
+      </div>
+      <div class="row">
+        <button id="guess-ref" class="full">Guess this is the target <span class="q-cost" id="cost-guess"></span></button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <button id="ask-m3" class="full" disabled>Is the target inside the M3? <span class="q-cost" id="cost-m3"></span></button>
+    </div>
+    <div id="log"></div>
+  </div>
+</div>
+<script src="js/supabase-client.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

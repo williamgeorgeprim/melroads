@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guess the Road — Melbourne</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg: #0f1115; --panel: #161922; --panel-border: #262b38; --text: #e8eaf0;
+  --muted: #8a90a2; --accent: #4f8cff; --accent-2: #6ee7b7; --danger: #ff6b6b;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; min-height:100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--text); }
+.wrap { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+h1 { font-size: 26px; margin: 0 0 4px 0; }
+.subtitle { color: var(--muted); margin-bottom: 32px; }
+.card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.modes { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.mode-btn { display:block; text-decoration:none; color: var(--text); background:#1d2230; border:1px solid var(--panel-border); border-radius:12px; padding:18px; transition: border-color .15s, background .15s; }
+.mode-btn:hover { border-color: var(--accent); background:#232a3c; }
+.mode-btn .title { font-weight:700; font-size:16px; margin-bottom:4px; }
+.mode-btn .desc { color: var(--muted); font-size:12.5px; line-height:1.4; }
+.mode-btn.locked { opacity:.5; cursor:not-allowed; }
+input[type=email], input[type=text] { width:100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--panel-border); background: #0f1220; color: var(--text); font-size: 13px; }
+button { font-family: inherit; cursor: pointer; border: 1px solid var(--panel-border); background: var(--accent); color:#0b1020; font-weight:600; border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+button:hover { background:#3f7ce0; }
+button.secondary { background:#1d2230; color: var(--text); font-weight:500; }
+.row { display:flex; gap:8px; }
+.row > input { flex:1; }
+.muted { color: var(--muted); font-size: 12.5px; }
+#auth-status { font-size:13px; margin-bottom:10px; }
+.lb-row { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid var(--panel-border); }
+.lb-row:last-child { border-bottom:none; }
+.tabs { display:flex; gap:8px; margin-bottom:10px; }
+.tabs button { background:#1d2230; color:var(--text); font-size:12px; padding:6px 10px; }
+.tabs button.active { background: var(--accent); color:#0b1020; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Guess the Road</h1>
+  <div class="subtitle">Melbourne edition — a secret road is hiding on the map</div>
+
+  <div class="card" id="auth-card">
+    <div id="auth-status" class="muted">Checking sign-in status…</div>
+    <div id="auth-form" style="display:none;">
+      <div class="row" style="margin-bottom:8px;">
+        <input type="text" id="username-input" placeholder="username" autocomplete="username" />
+        <input type="password" id="password-input" placeholder="password" autocomplete="current-password" />
+      </div>
+      <div class="row" style="margin-bottom:8px;">
+        <button id="signin-btn">Sign in</button>
+        <button class="secondary" id="signup-btn">Create account</button>
+      </div>
+      <div class="muted">Sign in to save scores, appear on the leaderboard, or play 1v1. Endless play works fine without an account.</div>
+    </div>
+    <button class="secondary" id="signout-btn" style="display:none;">Sign out</button>
+  </div>
+
+  <div class="modes">
+    <a class="mode-btn" href="game.html?mode=endless" id="endless-btn">
+      <div class="title">🎲 Endless</div>
+      <div class="desc">Random road every round. No account needed — sign in to see how your score compares to everyone else's average.</div>
+    </a>
+    <a class="mode-btn locked" href="game.html?mode=daily" id="daily-btn">
+      <div class="title">📅 Daily Road</div>
+      <div class="desc" id="daily-desc">Sign in to play — everyone gets the same road each day, one attempt.</div>
+    </a>
+    <a class="mode-btn locked" href="#" id="onevone-btn">
+      <div class="title">⚔️ 1v1</div>
+      <div class="desc">Sign in to challenge a friend to the same road and compare scores.</div>
+    </a>
+  </div>
+
+  <div class="card" id="onevone-card" style="display:none;">
+    <div style="font-weight:700; margin-bottom:8px;">1v1 Match</div>
+    <div class="row" style="margin-bottom:8px;">
+      <button id="create-match-btn">Create new match</button>
+      <input type="text" id="join-code-input" placeholder="paste match link/id to join" />
+      <button class="secondary" id="join-match-btn">Join</button>
+    </div>
+    <div class="muted" id="match-status"></div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700; margin-bottom:8px;">Leaderboard</div>
+    <div class="tabs">
+      <button class="active" data-mode="daily" data-scope="daily">Today</button>
+      <button data-mode="daily" data-scope="all-time">Daily (all-time)</button>
+      <button data-mode="endless" data-scope="all-time">Endless (all-time)</button>
+    </div>
+    <div id="leaderboard-list" class="muted">Loading…</div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  let user = null;
+
+  async function refreshAuthUI() {
+    user = await window.SB.getUser();
+    if (user) {
+      const profile = await window.SB.ensureProfile(user);
+      $("auth-status").textContent = `Signed in as ${profile ? profile.display_name : user.email}`;
+      $("auth-form").style.display = "none";
+      $("signout-btn").style.display = "inline-block";
+      $("daily-btn").classList.remove("locked");
+      $("daily-btn").href = "game.html?mode=daily";
+      $("daily-desc").textContent = "One road a day, same for everyone. Highest score wins the day.";
+      $("onevone-btn").classList.remove("locked");
+      $("onevone-card").style.display = "block";
+
+      const already = await window.SB.hasPlayedDailyToday(user.id);
+      if (already) $("daily-desc").textContent = `Already played today — your score: ${already.score}`;
+    } else {
+      $("auth-status").textContent = "Not signed in.";
+      $("auth-form").style.display = "block";
+      $("signout-btn").style.display = "none";
+      $("daily-btn").classList.add("locked");
+      $("daily-btn").removeAttribute("href");
+      $("onevone-btn").classList.add("locked");
+      $("onevone-card").style.display = "none";
+    }
+  }
+
+  $("signup-btn").addEventListener("click", async () => {
+    const username = $("username-input").value.trim();
+    const password = $("password-input").value;
+    if (!username || !password) { $("auth-status").textContent = "Enter a username and password first."; return; }
+    if (password.length < 6) { $("auth-status").textContent = "Password needs to be at least 6 characters."; return; }
+    const { error } = await window.SB.signUpWithUsername(username, password);
+    if (error) { $("auth-status").textContent = `Error: ${error.message}`; return; }
+    await refreshAuthUI();
+  });
+  $("signin-btn").addEventListener("click", async () => {
+    const username = $("username-input").value.trim();
+    const password = $("password-input").value;
+    if (!username || !password) { $("auth-status").textContent = "Enter a username and password."; return; }
+    const { error } = await window.SB.signInWithUsername(username, password);
+    if (error) { $("auth-status").textContent = `Error: ${error.message}`; return; }
+    await refreshAuthUI();
+  });
+  $("signout-btn").addEventListener("click", async () => {
+    await window.SB.signOut();
+    await refreshAuthUI();
+  });
+
+  $("create-match-btn").addEventListener("click", async () => {
+    if (!user) return;
+    // pick a target road id up front so both players get the same one;
+    // engine isn't loaded on this page, so game.html resolves it via road_id on load.
+    // We store a placeholder road_id of -1 meaning "pick on first load" is avoided by
+    // pre-selecting via a lightweight random id range is not possible without the dataset,
+    // so instead we let the creator's game.html assign the road on first open.
+    const match = await window.SB.createMatch({ playerId: user.id, roadId: -1, roadName: "" });
+    if (!match) { $("match-status").textContent = "Couldn't create match."; return; }
+    const link = `${location.origin}${location.pathname.replace("index.html", "")}game.html?mode=1v1&match=${match.id}`;
+    $("match-status").innerHTML = `Share this link with your opponent: <br><code>${link}</code>`;
+  });
+
+  $("join-match-btn").addEventListener("click", () => {
+    const raw = $("join-code-input").value.trim();
+    if (!raw) return;
+    // accept either a full link or a bare match id
+    const idMatch = raw.match(/match=([0-9a-fA-F-]+)/);
+    const id = idMatch ? idMatch[1] : raw;
+    location.href = `game.html?mode=1v1&match=${id}`;
+  });
+
+  // ---------- leaderboard ----------
+  async function loadLeaderboard(mode, scope) {
+    $("leaderboard-list").textContent = "Loading…";
+    const rows = await window.SB.leaderboard({ mode, scope });
+    if (!rows.length) { $("leaderboard-list").textContent = "No scores yet."; return; }
+    $("leaderboard-list").innerHTML = rows
+      .map((r, i) => `<div class="lb-row"><span>${i + 1}. ${r.profiles ? r.profiles.display_name : "?"} — ${r.road_name}</span><span>${r.score}</span></div>`)
+      .join("");
+  }
+  document.querySelectorAll(".tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      loadLeaderboard(btn.dataset.mode, btn.dataset.scope);
+    });
+  });
+
+  window.SB.onAuthChange(refreshAuthUI);
+  await refreshAuthUI();
+  await loadLeaderboard("daily", "daily");
+})();
+</script>
+</body>
+</html>
