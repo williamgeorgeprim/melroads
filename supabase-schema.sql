@@ -47,6 +47,7 @@ create table if not exists lobbies (
   current_round integer not null default 0,
   road_ids integer[] not null default '{}',
   road_names text[] not null default '{}',
+  rematch_lobby_id uuid references lobbies(id),
   created_at timestamptz default now()
 );
 
@@ -141,6 +142,19 @@ group by p.id, p.display_name;
 
 grant select on player_totals to anon, authenticated;
 
+-- Open public lobbies anyone can browse and join without a code —
+-- powers the "Open games" list on the home page.
+create or replace view public_open_lobbies as
+select
+  l.id, l.code, l.max_players, l.total_rounds, l.created_at,
+  p.display_name as host_name,
+  (select count(*) from lobby_players lp where lp.lobby_id = l.id and lp.status = 'joined') as player_count
+from lobbies l
+join profiles p on p.id = l.host_id
+where l.is_public = true and l.status = 'waiting';
+
+grant select on public_open_lobbies to anon, authenticated;
+
 -- ============================================================
 -- Row Level Security
 -- ============================================================
@@ -163,7 +177,8 @@ create policy "signed-in users create lobbies" on lobbies for insert with check 
 create policy "host updates their lobby" on lobbies for update using (auth.uid() = host_id);
 
 create policy "lobby players viewable by everyone" on lobby_players for select using (true);
-create policy "signed-in users join lobbies" on lobby_players for insert with check (auth.uid() = user_id);
+create policy "signed-in users join lobbies, hosts add rematch players" on lobby_players for insert
+  with check (auth.uid() = user_id or auth.uid() in (select host_id from lobbies where id = lobby_id));
 create policy "self or host updates a lobby player row" on lobby_players for update
   using (auth.uid() = user_id or auth.uid() in (select host_id from lobbies where id = lobby_id));
 

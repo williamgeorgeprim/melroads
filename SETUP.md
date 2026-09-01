@@ -56,3 +56,14 @@ Open `http://localhost:8000/`.
 - Anonymous (signed-out) Endless play works but doesn't save a score.
 - Daily "played today" check is per-day in Melbourne time (both the DB
   unique index and the client check use `Australia/Melbourne`, not UTC).
+
+## Updating an existing database
+`supabase-schema.sql` is idempotent (`create or replace`, `if not exists`
+throughout) — if you already have this database set up, you can just
+re-run the whole file in the SQL Editor to pick up new features like:
+- `player_totals` and `public_open_lobbies` views
+- the `rematch_lobby_id` column on `lobbies`
+- the widened `lobby_players` insert policy (lets a host add players to
+  a rematch lobby, not just to their own row)
+No data is dropped by re-running it.
+

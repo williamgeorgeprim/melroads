@@ -7,51 +7,64 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="config.js"></script>
 <style>
 :root{
-  --paper: #EDE7D9; --paper-2: #F5F1E6; --paper-line: #C9BFA4;
-  --ink: #232A22; --ink-soft: #6B6152;
-  --teal: #2F6F62; --teal-deep: #215046;
-  --amber: #B8781F; --amber-deep: #935F16;
-  --brick: #A23B3B;
+  --bg: #0d1117;
+  --bg-2: #161b24;
+  --bg-3: #1f2733;
+  --line: #2a3140;
+  --text: #eaeef3;
+  --text-soft: #8b93a6;
+  --green: #4ADE80;
+  --green-deep: #22c55e;
+  --gold: #fbbf24;
+  --coral: #ff5f5f;
 }
 * { box-sizing: border-box; }
-html, body { margin:0; padding:0; min-height:100%; font-family: 'Source Serif 4', Georgia, serif; background:var(--paper); color:var(--ink); }
-h1, h2, .title, .eyebrow, button, .tabs button { font-family: 'Oswald', 'Arial Narrow', sans-serif; }
+html, body { margin:0; padding:0; min-height:100%; font-family: 'Inter', sans-serif; background:var(--bg); color:var(--text); }
+h1, h2, .title, button, .tabs button { font-family: 'Poppins', sans-serif; }
 .wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px 90px; }
-.masthead { display:flex; align-items:baseline; justify-content:space-between; border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 6px; }
-h1 { font-size: 30px; font-weight:700; margin: 0; letter-spacing: 0.01em; text-transform: uppercase; }
-.grid-tag { font-family:'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft); border:1.5px solid var(--paper-line); border-radius:4px; padding: 3px 8px; white-space:nowrap; }
-.subtitle { color: var(--teal-deep); margin: 14px 0 30px; font-size: 15px; font-style: italic; }
-.card { background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 8px; padding: 20px; margin-bottom: 18px; }
-.section-title { font-weight:700; margin-bottom:12px; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color: var(--ink); }
-.modes { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 26px; }
-.mode-btn { position:relative; display:block; text-decoration:none; color: var(--ink); background: var(--paper-2); border: 1.5px solid var(--ink); border-radius: 8px; padding: 20px 18px 18px; transition: transform .1s, box-shadow .15s; }
-.mode-btn:hover { transform: translateY(-2px); box-shadow: 3px 4px 0 var(--ink); }
-.mode-btn .tag { position:absolute; top:14px; right:16px; font-family:'JetBrains Mono',monospace; font-size:11px; color: var(--ink-soft); }
-.mode-btn .title { font-weight:700; font-size:17px; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.02em; color: var(--teal-deep); padding-right: 34px; }
-.mode-btn .desc { color: var(--ink-soft); font-size:13px; line-height:1.5; font-family:'Source Serif 4',serif; }
-.mode-btn.locked { opacity:.55; cursor:not-allowed; }
-.mode-btn.locked:hover { transform:none; box-shadow:none; }
-input[type=email], input[type=text], input[type=password] { width:100%; padding: 10px 12px; border-radius: 5px; border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink); font-family:'Source Serif 4',serif; font-size: 14px; }
-input:focus { outline: 2px solid var(--teal); outline-offset:-1px; }
-button { cursor: pointer; border: 1.5px solid var(--ink); background: var(--teal); color: #F5F1E6; font-weight:600; border-radius: 5px; padding: 10px 16px; font-size: 13px; text-transform:uppercase; letter-spacing:0.03em; }
-button:hover { background: var(--teal-deep); }
-button.secondary { background: var(--paper); color: var(--ink); font-weight:500; }
-button.secondary:hover { background: #E7E0CC; }
+.masthead { display:flex; align-items:baseline; justify-content:space-between; padding-bottom: 18px; margin-bottom: 6px; }
+h1 { font-size: 28px; font-weight:800; margin: 0; letter-spacing: -0.01em; }
+.grid-tag { font-family:'JetBrains Mono', monospace; font-size: 11.5px; font-weight:500; color: var(--green); background: rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.3); border-radius:20px; padding: 5px 12px; white-space:nowrap; }
+.subtitle { color: var(--text-soft); margin: 0 0 32px; font-size: 15px; line-height:1.5; max-width: 46ch; }
+.card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-bottom: 18px; }
+.section-title { font-family:'Poppins',sans-serif; font-weight:600; margin-bottom:14px; font-size:14px; color: var(--text); }
+.modes { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 26px; }
+.mode-btn { position:relative; display:block; text-decoration:none; color: var(--text); background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 22px 20px 20px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.mode-btn:hover { transform: translateY(-3px); border-color: rgba(74,222,128,0.4); box-shadow: 0 10px 28px rgba(0,0,0,0.35); }
+.mode-btn .tag { position:absolute; top:16px; right:18px; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:500; color: var(--text-soft); }
+.mode-btn .title { font-weight:700; font-size:18px; margin-bottom:8px; color: var(--green); padding-right: 34px; }
+.mode-btn .desc { color: var(--text-soft); font-size:13px; line-height:1.55; font-family:'Inter',sans-serif; }
+.mode-btn.locked { opacity:.5; cursor:not-allowed; }
+.mode-btn.locked:hover { transform:none; box-shadow:none; border-color: var(--line); }
+input[type=email], input[type=text], input[type=password] { width:100%; padding: 11px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-3); color: var(--text); font-family:'Inter',sans-serif; font-size: 14px; }
+input::placeholder { color: var(--text-soft); }
+input:focus { outline: 2px solid var(--green); outline-offset:1px; }
+button { cursor: pointer; border: none; background: var(--green); color: #0d1117; font-weight:600; font-family:'Poppins',sans-serif; border-radius: 8px; padding: 11px 18px; font-size: 13.5px; transition: background .12s, transform .06s; }
+button:hover { background: var(--green-deep); }
+button:active { transform: translateY(1px); }
+button.secondary { background: var(--bg-3); color: var(--text); border: 1px solid var(--line); }
+button.secondary:hover { background: #262e3b; }
 .row { display:flex; gap:8px; }
 .row > input { flex:1; }
-.muted { color: var(--ink-soft); font-size: 12.5px; }
-#auth-status { font-size:14px; margin-bottom:10px; font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.02em; color: var(--teal-deep); }
-.lb-row { display:flex; justify-content:space-between; font-size:13.5px; padding:8px 0; border-bottom:1px solid var(--paper-line); font-family:'JetBrains Mono', monospace; }
+.muted { color: var(--text-soft); font-size: 12.5px; }
+#auth-status { font-size:13.5px; margin-bottom:10px; font-family:'Poppins',sans-serif; font-weight:500; color: var(--text); }
+.lb-row { display:flex; justify-content:space-between; font-size:13.5px; padding:10px 2px; border-bottom:1px solid var(--line); font-family:'JetBrains Mono', monospace; }
 .lb-row:last-child { border-bottom:none; }
-.lb-row .who { font-family:'Source Serif 4',serif; }
-.tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
-.tabs button { background: var(--paper); color: var(--ink-soft); font-size:11px; padding:7px 12px; border-color: var(--paper-line); }
-.tabs button.active { background: var(--ink); color: var(--paper-2); border-color: var(--ink); }
-code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(--paper); padding:2px 6px; border-radius:4px; border:1px solid var(--paper-line); word-break: break-all; }
+.lb-row .who { font-family:'Inter',sans-serif; color: var(--text); }
+.tabs { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+.tabs button { background: var(--bg-3); color: var(--text-soft); font-weight:500; font-size:11.5px; padding:8px 13px; border: 1px solid var(--line); }
+.tabs button.active { background: var(--green); color: #0d1117; border-color: var(--green); }
+code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(--bg-3); padding:2px 6px; border-radius:4px; border:1px solid var(--line); word-break: break-all; color: var(--text); }
+.best-badge { margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; color: var(--gold); }
+.open-lobby-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 2px; border-bottom:1px solid var(--line); font-size:13.5px; }
+.open-lobby-row:last-child { border-bottom:none; }
+.open-lobby-row .who { font-family:'Poppins',sans-serif; font-weight:500; }
+.open-lobby-row .meta { color: var(--text-soft); font-size:11.5px; font-family:'JetBrains Mono',monospace; }
+.open-lobby-row button { padding: 7px 14px; font-size: 11px; flex:0 0 auto; }
 </style>
 </head>
 <body>
@@ -83,11 +96,13 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
 <div class="tag">A1</div>
 <div class="title">Endless</div>
 <div class="desc">Random road every round. No account needed — sign in to see how your score compares to everyone else's average.</div>
+<div class="best-badge" id="endless-best"></div>
 </a>
 <a class="mode-btn locked" href="game.html?mode=daily" id="daily-btn">
 <div class="tag">B2</div>
 <div class="title">Daily Road</div>
 <div class="desc" id="daily-desc">Sign in to play — everyone gets the same road each day, one attempt.</div>
+<div class="best-badge" id="daily-best"></div>
 </a>
 <a class="mode-btn locked" href="#" id="multiplayer-btn">
 <div class="tag">C3</div>
@@ -102,6 +117,10 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
 <div class="row">
 <button id="create-lobby-btn">Create a lobby</button>
 <button class="secondary" id="join-lobby-btn">Join with a code</button>
+</div>
+<div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--line);">
+<div class="section-title" style="margin-bottom:8px;">Open games</div>
+<div id="open-lobbies-list" class="muted">Loading…</div>
 </div>
 </div>
 
@@ -138,6 +157,12 @@ $("multiplayer-card").style.display = "block";
 
 const already = await window.SB.hasPlayedDailyToday(user.id);
 if (already) $("daily-desc").textContent = `Already played today — your score: ${already.score}`;
+
+const bests = await window.SB.personalBests(user.id);
+$("endless-best").textContent = bests.endless != null ? `Your best: ${bests.endless}` : "";
+$("daily-best").textContent = bests.daily != null ? `Your best: ${bests.daily}` : "";
+
+await loadOpenLobbies();
 } else {
 $("auth-status").textContent = "Not signed in.";
 $("auth-form").style.display = "block";
@@ -146,7 +171,24 @@ $("daily-btn").classList.add("locked");
 $("daily-btn").removeAttribute("href");
 $("multiplayer-btn").classList.add("locked");
 $("multiplayer-card").style.display = "none";
+$("endless-best").textContent = "";
+$("daily-best").textContent = "";
 }
+}
+
+async function loadOpenLobbies() {
+$("open-lobbies-list").textContent = "Loading…";
+const rows = await window.LOBBY.getOpenPublicLobbies();
+if (!rows.length) { $("open-lobbies-list").textContent = "No open public games right now — create one!"; return; }
+$("open-lobbies-list").innerHTML = rows
+.map((r) => `<div class="open-lobby-row">
+<span><span class="who">${r.host_name}'s game</span> <span class="meta">${r.player_count}/${r.max_players} players · ${r.total_rounds} rounds</span></span>
+<button class="secondary" data-join="${r.id}">Join</button>
+</div>`)
+.join("");
+$("open-lobbies-list").querySelectorAll("[data-join]").forEach((btn) => {
+btn.addEventListener("click", () => { location.href = `lobby.html?lobby=${btn.dataset.join}`; });
+});
 }
 
 $("signup-btn").addEventListener("click", async () => {
