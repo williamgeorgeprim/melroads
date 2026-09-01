@@ -196,6 +196,19 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
   // ---------- leaderboard ----------
   async function loadLeaderboard(mode, scope) {
     $("leaderboard-list").textContent = "Loading…";
+
+    // Spoiler guard: don't reveal today's road name (or that a score
+    // exists against it) to anyone who hasn't played it themselves yet.
+    if (mode === "daily" && scope === "daily") {
+      const already = user ? await window.SB.hasPlayedDailyToday(user.id) : null;
+      if (!already) {
+        $("leaderboard-list").textContent = user
+          ? "Play today's road first to see today's leaderboard."
+          : "Sign in and play today's road first to see today's leaderboard.";
+        return;
+      }
+    }
+
     const rows = await window.SB.leaderboard({ mode, scope });
     if (!rows.length) { $("leaderboard-list").textContent = "No scores yet."; return; }
     $("leaderboard-list").innerHTML = rows
