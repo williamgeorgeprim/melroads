@@ -11,14 +11,21 @@ window.GAME_CONFIG = {
   STARTING_POINTS: 10000,
   COST_NORTH_SOUTH_QUESTION: 100,
   COST_EAST_WEST_QUESTION: 100,
-  COST_M3_QUESTION: 250,
   COST_WRONG_GUESS: 1000,
 
   // --- Target selection ---
   MIN_TARGET_LENGTH_M: 300,
 
-  // --- M3 boundary ---
-  M3_ROAD_NAMES: ["Eastern Freeway", "Alexandra Parade"],
+  // --- Road merging ---
+  // Same-named road segments (e.g. the two carriageways of a divided road,
+  // or the pieces either side of a big interchange) get stitched into one
+  // road if they come within this many metres of each other anywhere along
+  // their length. Local streets are fine around 80-100m; long freeways with
+  // wide medians/interchanges (the kind that were getting cut in two) need
+  // more room, so this is set higher. Raise it further if you still see a
+  // road split into two entries with the same name; lower it if two
+  // genuinely different same-named streets start merging into one.
+  DIVIDED_ROAD_MERGE_DISTANCE_M: 150,
 
   // --- Map ---
   MAP_CENTER: [145.0, -37.85],
