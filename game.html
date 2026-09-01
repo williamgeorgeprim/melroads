@@ -37,11 +37,20 @@ h1, h2, h3, .display, button, .mode-label, .q-cost, .top-link, .ref-name { font-
 h1 { font-size: 20px; font-weight:600; margin: 6px 0 2px 0; letter-spacing:0.3px; text-transform: uppercase; }
 .subtitle, .mode-label { color: var(--teal-deep); font-size: 12px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
 
-.lb-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 4px; border-bottom:1px solid var(--paper-line, #ccc); font-size:13px; }
-.lb-row.me { font-weight:700; }
-.lb-live { font-family:'JetBrains Mono', monospace; }
+/* --- lobby sidebar: players + live scores, shown in mode=lobby only --- */
+#lobby-panel { display:none; width: 240px; min-width: 220px; background: var(--paper); border-right: 2px solid var(--ink); flex-direction: column; height: 100%; overflow: hidden; }
+#lobby-panel-header { padding: 16px 18px 12px; border-bottom: 1px solid var(--paper-line); }
+#lobby-round-label { font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; color: var(--teal-deep); }
+#lobby-players-label { font-size:10.5px; color: var(--ink-soft); text-transform:uppercase; letter-spacing:0.08em; margin-top:4px; }
+#lobby-leaderboard { flex: 1 1 auto; overflow-y: auto; padding: 8px 12px; }
+#lobby-leave-wrap { padding: 12px 14px; border-top: 1px solid var(--paper-line); }
+.lb-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 8px; border-radius:5px; font-size:13px; }
+.lb-row.me { font-weight:700; background: var(--paper-2); }
+.lb-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lb-live { font-family:'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
 .lb-live.negative { color: var(--brick, #a23b3b); }
-.lb-kick { border:none; background:none; cursor:pointer; color: var(--brick, #a23b3b); font-size:12px; padding:0 2px; }
+.lb-kick { border:none; background:none; cursor:pointer; color: var(--brick, #a23b3b); font-size:13px; padding:0 2px; line-height:1; flex:0 0 auto; }
+.lb-kick:hover { opacity:.7; }
 
 /* --- score readout: the signature element --- */
 #score-block { background: var(--ink); border-radius: 6px; padding: 14px 16px; margin-top:4px; display:flex; align-items:flex-end; justify-content:space-between; gap:10px; }
@@ -92,9 +101,15 @@ input[type=text]:focus { outline: 2px solid var(--teal); outline-offset: -1px; }
 <body>
 <div id="app">
   <div id="map"></div>
-  <div id="lobby-panel" style="display:none; position:fixed; left:16px; top:80px; width:220px;">
-    <div id="lobby-round-label" style="font-weight:600; margin-bottom:8px;"></div>
+  <div id="lobby-panel">
+    <div id="lobby-panel-header">
+      <div id="lobby-round-label">Round — / —</div>
+      <div id="lobby-players-label">Players</div>
+    </div>
     <div id="lobby-leaderboard"></div>
+    <div id="lobby-leave-wrap">
+      <button class="small full" id="leave-lobby-btn">Leave game</button>
+    </div>
   </div>
   <div id="panel">
     <div id="status-banner"></div>
