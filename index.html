@@ -89,9 +89,9 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
     <a class="mode-btn locked" href="game.html?mode=daily" id="daily-btn">
       <div class="tag">B2</div>
       <div class="title">Daily Road</div>
-      <div class="desc" id="daily-desc">Sign in to play everyone gets the same road each day, one attempt.</div>
+      <div class="desc" id="daily-desc">Sign in to play — everyone gets the same road each day, one attempt.</div>
     </a>
-    <a class="mode-btn locked" href="#onevone-card" id="onevone-btn">
+    <a class="mode-btn locked" href="#" id="onevone-btn">
       <div class="tag">C3</div>
       <div class="title">1v1</div>
       <div class="desc">Sign in to challenge a friend to the same road and compare scores.</div>
@@ -138,7 +138,7 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
       $("onevone-btn").classList.remove("locked");
       $("onevone-btn").querySelector(".desc").textContent = "Create a match or join a friend's below.";
       $("onevone-card").style.display = "block";
-      
+
       const already = await window.SB.hasPlayedDailyToday(user.id);
       if (already) $("daily-desc").textContent = `Already played today — your score: ${already.score}`;
     } else {
@@ -172,6 +172,13 @@ code { font-family:'JetBrains Mono', monospace; font-size:12px; background: var(
   $("signout-btn").addEventListener("click", async () => {
     await window.SB.signOut();
     await refreshAuthUI();
+  });
+
+  $("onevone-btn").addEventListener("click", (e) => {
+    e.preventDefault();
+    if ($("onevone-card").style.display === "block") {
+      $("onevone-card").scrollIntoView({ behavior: "smooth" });
+    }
   });
 
   $("create-match-btn").addEventListener("click", async () => {
