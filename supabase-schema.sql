@@ -165,24 +165,40 @@ alter table lobbies enable row level security;
 alter table lobby_players enable row level security;
 alter table lobby_round_scores enable row level security;
 
+-- CREATE POLICY has no IF NOT EXISTS / OR REPLACE form, so each one is
+-- dropped first — this makes the whole file safe to re-run.
+drop policy if exists "profiles viewable by everyone" on profiles;
 create policy "profiles viewable by everyone" on profiles for select using (true);
+drop policy if exists "users insert their own profile" on profiles;
 create policy "users insert their own profile" on profiles for insert with check (auth.uid() = id);
+drop policy if exists "users update their own profile" on profiles;
 create policy "users update their own profile" on profiles for update using (auth.uid() = id);
 
+drop policy if exists "scores viewable by everyone" on scores;
 create policy "scores viewable by everyone" on scores for select using (true);
+drop policy if exists "users insert their own scores" on scores;
 create policy "users insert their own scores" on scores for insert with check (auth.uid() = user_id);
 
+drop policy if exists "lobbies viewable by everyone" on lobbies;
 create policy "lobbies viewable by everyone" on lobbies for select using (true);
+drop policy if exists "signed-in users create lobbies" on lobbies;
 create policy "signed-in users create lobbies" on lobbies for insert with check (auth.uid() = host_id);
+drop policy if exists "host updates their lobby" on lobbies;
 create policy "host updates their lobby" on lobbies for update using (auth.uid() = host_id);
 
+drop policy if exists "lobby players viewable by everyone" on lobby_players;
 create policy "lobby players viewable by everyone" on lobby_players for select using (true);
+drop policy if exists "signed-in users join lobbies" on lobby_players;
+drop policy if exists "signed-in users join lobbies, hosts add rematch players" on lobby_players;
 create policy "signed-in users join lobbies, hosts add rematch players" on lobby_players for insert
   with check (auth.uid() = user_id or auth.uid() in (select host_id from lobbies where id = lobby_id));
+drop policy if exists "self or host updates a lobby player row" on lobby_players;
 create policy "self or host updates a lobby player row" on lobby_players for update
   using (auth.uid() = user_id or auth.uid() in (select host_id from lobbies where id = lobby_id));
 
+drop policy if exists "round scores viewable by everyone" on lobby_round_scores;
 create policy "round scores viewable by everyone" on lobby_round_scores for select using (true);
+drop policy if exists "users insert their own round scores" on lobby_round_scores;
 create policy "users insert their own round scores" on lobby_round_scores for insert with check (auth.uid() = user_id);
 
 -- ============================================================
